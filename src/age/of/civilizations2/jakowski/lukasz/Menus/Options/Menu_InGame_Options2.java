@@ -279,7 +279,8 @@ public class Menu_InGame_Options2 extends Menu {
                 break;
             }
             case 6: {
-                // Відкриваємо вікно зміни країни
+                // Ховаємо меню налаштувань та відкриваємо вікно зміни країни
+                CFG.menus.setVisible_InGame_Options(false);
                 Menu_SwitchCountry.open();
                 break;
             }

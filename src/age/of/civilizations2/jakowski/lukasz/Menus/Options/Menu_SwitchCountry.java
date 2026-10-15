@@ -1,5 +1,6 @@
 package age.of.civilizations2.jakowski.lukasz.Menus.Options;
 
+import age.of.civilizations2.jakowski.lukasz.Button.Button_Transparent;
 import age.of.civilizations2.jakowski.lukasz.Button.Classic.Button_Classic;
 import age.of.civilizations2.jakowski.lukasz.Button.Classic.Button_Classic_CivilizationAndFlag;
 import age.of.civilizations2.jakowski.lukasz.Button.MenuElemUI;
@@ -18,16 +19,19 @@ import java.util.Comparator;
 import java.util.List;
 
 /**
- * Menu_SwitchCountry - меню перемикання активної цивілізації гравця.
- * Дозволяє вибрати будь-яку живу державу на карті або швидко перейти
- * на державу обраної провінції.
+ * Menu_SwitchCountry - меню зміни поточної цивілізації гравця.
+ * Реалізовано модальний режим із захистом від випадкових кліків
+ * та перехоплення курсору за межами вікна.
  */
 public class Menu_SwitchCountry extends Menu {
     private static int switchCountryMenuID = -1;
+    private static int switchCountryBGMenuID = -1;
     private static Menu_SwitchCountry instance = null;
+    private static Menu_SwitchCountry_BG bgInstance = null;
 
     private List<Integer> lCivIDs = new ArrayList<Integer>();
-    private int idCloseBtn = -1;
+    private int idCloseBtnTop = -1;
+    private int idCloseBtnBottom = -1;
     private int idActiveProvBtn = -1;
     private int activeProvCivID = -1;
 
@@ -35,24 +39,78 @@ public class Menu_SwitchCountry extends Menu {
         this.rebuild();
     }
 
+    /**
+     * Фонове меню для затемнення та блокування кліків/наведення курсору за межами модального вікна.
+     */
+    public static class Menu_SwitchCountry_BG extends Menu {
+        public Menu_SwitchCountry_BG() {
+            List<MenuElemUI> elems = new ArrayList<MenuElemUI>();
+            elems.add(new Button_Transparent(0, 0, CFG.GAMEWIDTH, CFG.GAMEHEIGHT, true) {
+                @Override
+                public void actionElem(int iID) {
+                    // Кліки за межами меню поглинаються і блокуються
+                }
+            });
+            this.initMenu(null, 0, 0, CFG.GAMEWIDTH, CFG.GAMEHEIGHT, elems);
+        }
+
+        @Override
+        public void actionEL(int iID) {
+            // Заборона будь-яких дій за межами меню
+        }
+
+        @Override
+        public void onBackPressed() {
+            Menu_SwitchCountry.close();
+        }
+
+        @Override
+        public void draw(SpriteBatch oSB, int iTranslateX, int iTranslateY, boolean sliderMenuIsActive) {
+            // Напівпрозоре затемнення всієї гри
+            oSB.setColor(new Color(0.0f, 0.0f, 0.0f, 0.65f));
+            IMGManager.getIMG(Images.pix255).draw(oSB, 0, 0, CFG.GAMEWIDTH, CFG.GAMEHEIGHT);
+            oSB.setColor(Color.WHITE);
+            super.draw(oSB, iTranslateX, iTranslateY, sliderMenuIsActive);
+        }
+    }
+
     public static void open() {
         try {
+            if (bgInstance == null || switchCountryBGMenuID < 0) {
+                bgInstance = new Menu_SwitchCountry_BG();
+                switchCountryBGMenuID = CFG.menus.addNewMenuToViewID(CFG.menus.IN_GAME_MENU, bgInstance);
+            }
             if (instance == null || switchCountryMenuID < 0) {
                 instance = new Menu_SwitchCountry();
                 switchCountryMenuID = CFG.menus.addNewMenuToViewID(CFG.menus.IN_GAME_MENU, instance);
             } else {
                 instance.rebuild();
             }
-            CFG.menus.setOrderOfMenuID(switchCountryMenuID);
+
+            bgInstance.setVisibleM(true);
             instance.setVisibleM(true);
+
+            // Виставляємо порядок: фоновий блокувальник, потім вікно меню зверху
+            CFG.menus.setOrderOfMenuID(switchCountryBGMenuID);
+            CFG.menus.setOrderOfMenuID(switchCountryMenuID);
         } catch (Exception ex) {
             CFG.exceptionStack(ex);
         }
     }
 
     public static void close() {
+        close(true);
+    }
+
+    public static void close(boolean reopenOptions) {
+        if (bgInstance != null) {
+            bgInstance.setVisibleM(false);
+        }
         if (instance != null) {
             instance.setVisibleM(false);
+        }
+        if (reopenOptions) {
+            CFG.menus.setVisible_InGame_Options(true);
         }
     }
 
@@ -60,7 +118,7 @@ public class Menu_SwitchCountry extends Menu {
         this.lCivIDs.clear();
         List<MenuElemUI> menuElements = new ArrayList<MenuElemUI>();
 
-        int menuWidth = Math.min((int)(CFG.CIV_INFO_MENU_WIDTH * 1.55f), CFG.GAMEWIDTH - CFG.PADD * 4);
+        int menuWidth = Math.min((int)(CFG.CIV_INFO_MENU_WIDTH * 1.6f), CFG.GAMEWIDTH - CFG.PADD * 4);
         int menuHeight = Math.min((int)(CFG.GAMEHEIGHT * 0.82f), CFG.GAMEHEIGHT - CFG.BUTTON_H);
         int menuX = CFG.GAMEWIDTH / 2 - menuWidth / 2;
         int menuY = CFG.GAMEHEIGHT / 2 - menuHeight / 2;
@@ -73,20 +131,20 @@ public class Menu_SwitchCountry extends Menu {
 
         boolean isUkr = CFG.lang.get("LANGUAGENAME").equalsIgnoreCase("Українська");
 
-        // 1. Заголовок
+        // 1. Заголовок вікна
         String titleText = isUkr ? "ЗМІНА ДЕРЖАВИ" : "SWITCH CIVILIZATION";
         TextTitleStyle titleElem = new TextTitleStyle(titleText, -1, btnX, curY, btnW, titleH);
         menuElements.add(titleElem);
         curY += titleH + CFG.PADD;
 
-        // 2. Кнопка "Назад / Закрити"
-        String closeText = isUkr ? "✕ Повернутися назад" : "✕ Back";
-        Button_Classic closeBtn = new Button_Classic(closeText, -1, btnX, curY, btnW, btnH, true);
-        menuElements.add(closeBtn);
-        this.idCloseBtn = menuElements.size() - 1;
+        // 2. Головна кнопка виходу з меню зверху списку
+        String closeTextTop = isUkr ? "✕ Закрити вікно (Повернутися до меню)" : "✕ Close (Return to Menu)";
+        Button_Classic closeBtnTop = new Button_Classic(closeTextTop, -1, btnX, curY, btnW, btnH, true);
+        menuElements.add(closeBtnTop);
+        this.idCloseBtnTop = menuElements.size() - 1;
         curY += btnH + CFG.PADD * 2;
 
-        // 3. Швидке перемикання на країну поточної обраної провінції (якщо є)
+        // 3. Швидке перемикання на країну поточної обраної провінції
         this.idActiveProvBtn = -1;
         this.activeProvCivID = -1;
         if (CFG.core.getActiveProvID() >= 0) {
@@ -96,7 +154,7 @@ public class Menu_SwitchCountry extends Menu {
                     && CFG.core.getCiv(provCiv).getNumOfProvs() > 0) {
                 this.activeProvCivID = provCiv;
                 String provCivName = CFG.core.getCiv(provCiv).getCivName();
-                String shortcutText = (isUkr ? "⚡ Обрана провінція: " : "⚡ Selected province: ") + provCivName;
+                String shortcutText = (isUkr ? "⚡ Обрана на карті провінція: " : "⚡ Selected province: ") + provCivName;
                 Button_Classic_CivilizationAndFlag provBtn = new Button_Classic_CivilizationAndFlag(
                         provCiv,
                         CFG.CIV_FLAG_WIDTH + CFG.PADD * 3,
@@ -113,7 +171,7 @@ public class Menu_SwitchCountry extends Menu {
             }
         }
 
-        // 4. Збір та сортування всіх живих цивілізацій
+        // 4. Збір та сортування живих цивілізацій
         int curPlayerCiv = CFG.core.getPlayer(CFG.PLAYER_TURN_ID).getCivId();
         List<Integer> aliveCivs = new ArrayList<Integer>();
         for (int i = 1; i < CFG.core.getCivsSize(); i++) {
@@ -122,7 +180,7 @@ public class Menu_SwitchCountry extends Menu {
             }
         }
 
-        // Сортуємо: поточна країна перша, далі за спаданням кількості провінцій
+        // Поточна цивілізація перша, далі за кількістю провінцій
         Collections.sort(aliveCivs, new Comparator<Integer>() {
             @Override
             public int compare(Integer c1, Integer c2) {
@@ -141,7 +199,7 @@ public class Menu_SwitchCountry extends Menu {
             int provCount = CFG.core.getCiv(civID).getNumOfProvs();
             boolean isCurrent = (civID == curPlayerCiv);
 
-            String label = (isCurrent ? (isUkr ? "★ [ВИ ГРАЄТЕ ЗАРАЗ] " : "★ [CURRENT] ") : "")
+            String label = (isCurrent ? (isUkr ? "★ [ВАША ПОТОЧНА КРАЇНА] " : "★ [CURRENT] ") : "")
                     + civName + " (" + provCount + (isUkr ? " пров.)" : " prov.)");
 
             Button_Classic_CivilizationAndFlag civBtn = new Button_Classic_CivilizationAndFlag(
@@ -159,13 +217,20 @@ public class Menu_SwitchCountry extends Menu {
             curY += btnH + CFG.PADD;
         }
 
-        // Ініціалізація меню зі скролінгом
+        // 5. Додаткова кнопка виходу внизу списку
+        String closeTextBottom = isUkr ? "✕ Закрити вікно" : "✕ Close Window";
+        Button_Classic closeBtnBottom = new Button_Classic(closeTextBottom, -1, btnX, curY, btnW, btnH, true);
+        menuElements.add(closeBtnBottom);
+        this.idCloseBtnBottom = menuElements.size() - 1;
+        curY += btnH + CFG.PADD;
+
+        // Ініціалізація з можливістю закриття (хрестик в кутку) та вертикальним скролінгом
         this.initMenu(null, menuX, menuY, menuWidth, menuHeight, menuElements, true, false, true);
     }
 
     @Override
     public void actionEL(int iID) {
-        if (iID == this.idCloseBtn) {
+        if (iID == this.idCloseBtnTop || iID == this.idCloseBtnBottom) {
             close();
             return;
         }
@@ -174,16 +239,16 @@ public class Menu_SwitchCountry extends Menu {
             if (this.activeProvCivID > 0) {
                 switchToCiv(this.activeProvCivID);
             }
-            close();
+            close(false);
             return;
         }
 
-        int firstCivIndex = (this.idActiveProvBtn >= 0) ? (this.idActiveProvBtn + 1) : (this.idCloseBtn + 1);
+        int firstCivIndex = (this.idActiveProvBtn >= 0) ? (this.idActiveProvBtn + 1) : (this.idCloseBtnTop + 1);
         int civIndex = iID - firstCivIndex;
         if (civIndex >= 0 && civIndex < this.lCivIDs.size()) {
             int targetCiv = this.lCivIDs.get(civIndex);
             switchToCiv(targetCiv);
-            close();
+            close(false);
         }
     }
 
@@ -193,21 +258,21 @@ public class Menu_SwitchCountry extends Menu {
     }
 
     @Override
-    public void draw(SpriteBatch oSB, int iTranslateX, int iTranslateY, boolean sliderMenuIsActive) {
-        // Затемнений фон позаду меню
-        oSB.setColor(new Color(0.0f, 0.0f, 0.0f, 0.65f));
-        IMGManager.getIMG(Images.pix255).draw(oSB, 0, 0, CFG.GAMEWIDTH, CFG.GAMEHEIGHT);
-        oSB.setColor(Color.WHITE);
+    public void actionCloseMenu() {
+        close();
+    }
 
-        // Рамка та фон вікна
+    @Override
+    public void draw(SpriteBatch oSB, int iTranslateX, int iTranslateY, boolean sliderMenuIsActive) {
+        // Рамка та фон модального вікна
         Core.drawMenuBG(oSB, this.getPosX() + iTranslateX, this.getPosY() + iTranslateY, this.getWidthM(), this.getHeightM());
 
-        // Відмальовка елементів меню зі скролінгом
+        // Відмальовка елементів меню
         super.draw(oSB, iTranslateX, iTranslateY, sliderMenuIsActive);
     }
 
     /**
-     * Повна та безпечна логіка перемикання активного гравця на нову країну.
+     * Повна логіка зміни держави гравця.
      */
     public static void switchToCiv(int newCivID) {
         try {
@@ -232,27 +297,25 @@ public class Menu_SwitchCountry extends Menu {
                 CFG.core.getCiv(oldCivID).setIsPlayer(false);
             }
 
-            // 2. Встановлюємо новий civ ID (всередині setCivId виставляється setIsPlayer(true) та оновлюється statsCiv)
+            // 2. Призначаємо нову країну гравцю
             player.setCivId(newCivID);
-
-            // Вимикаємо режим глядача, якщо він був увімкнений
             CFG.SPECTATOR_MODE = false;
 
-            // 3. Повне оновлення туману війни та виявлених провінцій/країн
+            // 3. Оновлення туману війни
             player.initFogOfWar();
             CFG.gameAction.buildFogOfWar(nPlayerTurnID);
             player.buildMetProvsAndCivs();
 
-            // 4. Оновлюємо прапор гравця
+            // 4. Оновлення прапора гравця
             player.loadPlayersFlag();
 
-            // 5. Оновлюємо верхній індикатор ресурсів (золото, очки пересування, дип. очки, ранг)
+            // 5. Оновлення верхнього бару ресурсів
             CFG.menus.updateInGameTopAll(newCivID);
 
-            // 6. Оновлюємо шейдери та карту світу
+            // 6. Оновлення карти
             CFG.map.getMpB().updateWorldMap_Shaders();
 
-            // 7. Центруємо камеру на столицю або першу провінцію нової країни
+            // 7. Центрування камери на столицю нової країни
             int capitalProv = CFG.core.getCiv(newCivID).getCapitalProvID();
             if (capitalProv >= 0 && CFG.core.getProv(capitalProv).getCivId() == newCivID) {
                 CFG.map.getMpC().centerToProvID(capitalProv);
@@ -263,13 +326,13 @@ public class Menu_SwitchCountry extends Menu {
                 CFG.core.setActiveProvID(firstProv);
             }
 
-            // 8. Перевірка панелі дій провінції
+            // 8. Перевірка панелі дій
             CFG.core.checkProvinceActionMenu();
 
-            // 9. Закриваємо меню паузи
+            // 9. Меню налаштувань закривається повністю
             CFG.menus.setVisible_InGame_Options(false);
 
-            // 10. Сповіщення для гравця
+            // 10. Сповіщення
             boolean isUkr = CFG.lang.get("LANGUAGENAME").equalsIgnoreCase("Українська");
             String civName = CFG.core.getCiv(newCivID).getCivName();
             String msg = (isUkr ? "Тепер ви граєте за: " : "Now playing as: ") + civName;
