@@ -163,7 +163,8 @@ public class Menu_InGame_AnnexVassal extends Menu {
         // Термін васалітету
         String yearsStr = (this.currentStatus.yearsOk ? "✓ " : "✕ ") +
                 (isUkr ? "Термін васалітету: " : "Vassal duration: ") +
-                this.currentStatus.yearsAsVassal + " / " + this.currentStatus.reqYears + (isUkr ? " років" : " years");
+                this.currentStatus.yearsAsVassal + " / " + this.currentStatus.reqYears + (isUkr ? " р. (" : " yrs (") +
+                this.currentStatus.turnsAsVassal + " / " + this.currentStatus.reqTurns + (isUkr ? " х.)" : " turns)");
         TextStyle txtYears = new TextStyle(yearsStr, -1, elemX, curY, elemW, textH);
         menuElements.add(txtYears);
         curY += textH + CFG.PADD;

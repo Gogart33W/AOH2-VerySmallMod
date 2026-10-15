@@ -4,6 +4,7 @@ import age.of.civilizations2.jakowski.lukasz.CFG;
 import age.of.civilizations2.jakowski.lukasz.GameCalendar;
 import age.of.civilizations2.jakowski.lukasz.GameValues.GameValues;
 import age.of.civilizations2.jakowski.lukasz.HistoryLog.HistoryLog_Annexation;
+import age.of.civilizations2.jakowski.lukasz.HistoryLog.HistoryLog_JoinAlliance;
 import age.of.civilizations2.jakowski.lukasz.SFXManager;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -11,13 +12,16 @@ import java.util.Map;
 
 /**
  * VassalManager - менеджер механік васалітету:
- * 1. Синхронізація релігії та держ. устрою васалів із сюзереном.
- * 2. Перевірка вимог для мирної анексії васалів.
- * 3. Налаштування порогів пропозиції васалізації (стосунки 50.0, коефіцієнт бюджету 5.0).
+ * 1. Синхронізація релігії, державного устрою (ідеології) та альянсів васалів із сюзереном.
+ * 2. Точний облік дати та ходу набуття статусу васала.
+ * 3. Перевірка вимог для мирної анексії васалів.
+ * 4. Налаштування порогів пропозиції васалізації (стосунки 50.0, коефіцієнт бюджету 5.0).
  */
 public class VassalManager {
-    // Збереження року початку васалітету для кожної держави
+    // Збереження року та ходу початку васалітету для кожної держави
     private static Map<Integer, Integer> vassalStartYear = new HashMap<Integer, Integer>();
+    private static Map<Integer, Integer> vassalStartTurn = new HashMap<Integer, Integer>();
+    private static Map<Integer, Integer> knownLords = new HashMap<Integer, Integer>();
 
     static {
         applyDiplomacyValues();
@@ -39,16 +43,40 @@ public class VassalManager {
     }
 
     /**
-     * Синхронізує релігію та державний устрій усіх васалів із їхніми сюзеренами по всьому світу.
+     * Синхронізує релігію, державний устрій та альянси усіх васалів із їхніми сюзеренами по всьому світу.
+     * Також оновлює точний облік початку васалітету.
      */
     public static void syncAllVassals() {
         try {
             applyDiplomacyValues();
             for (int i = 1; i < CFG.core.getCivsSize(); i++) {
-                if (CFG.core.getCiv(i).getNumOfProvs() <= 0) continue;
+                if (CFG.core.getCiv(i).getNumOfProvs() <= 0) {
+                    knownLords.remove(i);
+                    vassalStartYear.remove(i);
+                    vassalStartTurn.remove(i);
+                    continue;
+                }
                 int lordID = CFG.core.getCiv(i).getPuppetOfCiv();
                 if (lordID > 0 && lordID != i && lordID < CFG.core.getCivsSize() && CFG.core.getCiv(lordID).getNumOfProvs() > 0) {
+                    Integer lastLord = knownLords.get(i);
+                    if (lastLord == null || lastLord.intValue() != lordID) {
+                        // Зафіксовано новий васалітет
+                        knownLords.put(i, lordID);
+                        if (GameCalendar.TURNID <= 2) {
+                            // Якщо це початок гри — васал від старту сценарію
+                            vassalStartTurn.put(i, 1);
+                            vassalStartYear.put(i, GameCalendar.currYear);
+                        } else {
+                            // Якщо набуто статус під час гри — фіксуємо точний поточний хід і рік
+                            vassalStartTurn.put(i, GameCalendar.TURNID);
+                            vassalStartYear.put(i, GameCalendar.currYear);
+                        }
+                    }
                     syncVassalWithLord(lordID, i);
+                } else {
+                    knownLords.remove(i);
+                    vassalStartYear.remove(i);
+                    vassalStartTurn.remove(i);
                 }
             }
         } catch (Exception ex) {
@@ -57,11 +85,15 @@ public class VassalManager {
     }
 
     /**
-     * Синхронізує конкретного васала із сюзереном.
+     * Повна синхронізація конкретного васала із сюзереном:
+     * - Релігія
+     * - Державний устрій (ідеологія, прапор, назва)
+     * - Альянс
      */
     public static void syncVassalWithLord(int lordCivID, int vassalCivID) {
         try {
             if (lordCivID <= 0 || vassalCivID <= 0 || lordCivID == vassalCivID) return;
+            if (lordCivID >= CFG.core.getCivsSize() || vassalCivID >= CFG.core.getCivsSize()) return;
             if (CFG.core.getCiv(lordCivID).getNumOfProvs() <= 0 || CFG.core.getCiv(vassalCivID).getNumOfProvs() <= 0) return;
 
             // 1. Синхронізація релігії
@@ -72,14 +104,72 @@ public class VassalManager {
 
             // 2. Синхронізація державного устрою (ідеології)
             int lordIdeology = CFG.core.getCiv(lordCivID).getIdeology();
-            if (CFG.core.getCiv(vassalCivID).getIdeology() != lordIdeology) {
+            String desiredExtraTag = CFG.ideologiesMgr.getIdeologyID(lordIdeology).getExtraTag();
+            String currentTag = CFG.core.getCiv(vassalCivID).getCivTag();
+            boolean tagMatches = desiredExtraTag.isEmpty() 
+                    ? !currentTag.contains("_") 
+                    : currentTag.endsWith(desiredExtraTag);
+
+            if (CFG.core.getCiv(vassalCivID).getIdeology() != lordIdeology || !tagMatches) {
+                String realTag = CFG.ideologiesMgr.getRealTag(currentTag);
+                String targetTag = realTag + desiredExtraTag;
+
+                // Встановлюємо ідеологію безпосередньо в об'єкт цивілізації
+                CFG.core.getCiv(vassalCivID).setIdeology(lordIdeology);
+
+                // Оновлюємо тег цивілізації та назву
+                if (!currentTag.equals(targetTag)) {
+                    CFG.core.getCiv(vassalCivID).setCivTag(targetTag);
+                    try {
+                        CFG.core.getCiv(vassalCivID).loadFlag();
+                    } catch (Exception ignored) {
+                    }
+                }
+
+                // Спроба оновити системні дані через core
                 try {
-                    String realTag = CFG.ideologiesMgr.getRealTag(CFG.core.getCiv(vassalCivID).getCivTag());
-                    String extraTag = CFG.ideologiesMgr.getIdeologyID(lordIdeology).getExtraTag();
-                    CFG.core.updateCivilizationIdeology(vassalCivID, realTag + extraTag);
+                    CFG.core.updateCivilizationIdeology(vassalCivID, targetTag);
                 } catch (Exception ignored) {
                 }
+
+                // Гарантуємо, що id ідеології залишився вірним після будь-яких викликів
                 CFG.core.getCiv(vassalCivID).setIdeology(lordIdeology);
+            }
+
+            // 3. Синхронізація альянсу
+            syncVassalAllianceWithLord(lordCivID, vassalCivID);
+        } catch (Exception ex) {
+            CFG.exceptionStack(ex);
+        }
+    }
+
+    /**
+     * Синхронізує альянс васала із альянсом сюзерена:
+     * Якщо сюзерен в альянсі — васал обов'язково входить у той же альянс.
+     * Якщо сюзерен не в альянсі — васал не може перебувати в альянсі самостійно.
+     */
+    public static void syncVassalAllianceWithLord(int lordCivID, int vassalCivID) {
+        try {
+            if (lordCivID <= 0 || vassalCivID <= 0 || lordCivID == vassalCivID) return;
+            if (lordCivID >= CFG.core.getCivsSize() || vassalCivID >= CFG.core.getCivsSize()) return;
+
+            int lordAlliance = CFG.core.getCiv(lordCivID).getAlliance();
+            int vassalAlliance = CFG.core.getCiv(vassalCivID).getAlliance();
+
+            if (lordAlliance > 0 && lordAlliance < CFG.core.getAlliancesSize()) {
+                if (vassalAlliance != lordAlliance) {
+                    if (vassalAlliance > 0 && vassalAlliance < CFG.core.getAlliancesSize()) {
+                        CFG.core.getAlliance(vassalAlliance).removeCivilization(vassalCivID);
+                    }
+                    CFG.core.getAlliance(lordAlliance).addCivilization(vassalCivID);
+                    CFG.core.getCiv(vassalCivID).setAlliance(lordAlliance);
+                    CFG.historyManager.addHistoryLog(new HistoryLog_JoinAlliance(vassalCivID, lordAlliance));
+                }
+            } else if (lordAlliance == 0 && vassalAlliance > 0) {
+                if (vassalAlliance < CFG.core.getAlliancesSize()) {
+                    CFG.core.getAlliance(vassalAlliance).removeCivilization(vassalCivID);
+                }
+                CFG.core.getCiv(vassalCivID).setAlliance(0);
             }
         } catch (Exception ex) {
             CFG.exceptionStack(ex);
@@ -105,14 +195,40 @@ public class VassalManager {
     }
 
     /**
-     * Отримує кількість повних років васалітету.
+     * Реєструє початок васалітету (наприклад, при прийнятті пропозиції васалізації).
+     */
+    public static void registerVassalStart(int vassalCivID, int lordCivID) {
+        knownLords.put(vassalCivID, lordCivID);
+        vassalStartTurn.put(vassalCivID, GameCalendar.TURNID);
+        vassalStartYear.put(vassalCivID, GameCalendar.currYear);
+    }
+
+    /**
+     * Викликається при звільненні васала.
+     */
+    public static void onVassalLiberated(int vassalCivID) {
+        knownLords.remove(vassalCivID);
+        vassalStartTurn.remove(vassalCivID);
+        vassalStartYear.remove(vassalCivID);
+        try {
+            int vassalAlliance = CFG.core.getCiv(vassalCivID).getAlliance();
+            if (vassalAlliance > 0 && vassalAlliance < CFG.core.getAlliancesSize()) {
+                CFG.core.getAlliance(vassalAlliance).removeCivilization(vassalCivID);
+            }
+            CFG.core.getCiv(vassalCivID).setAlliance(0);
+        } catch (Exception ignored) {
+        }
+    }
+
+    /**
+     * Отримує кількість повних років васалітету від моменту набуття статусу васала.
      */
     public static int getVassalYears(int vassalCivID) {
         try {
             if (!vassalStartYear.containsKey(vassalCivID)) {
-                // Якщо запису ще немає: розраховуємо на основі поточної партії
-                int estimatedStartYear = Math.max(0, GameCalendar.currYear - (GameCalendar.TURNID / 12));
-                vassalStartYear.put(vassalCivID, estimatedStartYear);
+                int currentLord = CFG.core.getCiv(vassalCivID).getPuppetOfCiv();
+                registerVassalStart(vassalCivID, currentLord);
+                return 0;
             }
             int startYear = vassalStartYear.get(vassalCivID);
             return Math.max(0, GameCalendar.currYear - startYear);
@@ -122,10 +238,20 @@ public class VassalManager {
     }
 
     /**
-     * Реєструє початок васалітету для держави (наприклад, при створенні васала).
+     * Отримує кількість ходів від моменту набуття статусу васала.
      */
-    public static void registerVassalStart(int vassalCivID) {
-        vassalStartYear.put(vassalCivID, GameCalendar.currYear);
+    public static int getVassalTurns(int vassalCivID) {
+        try {
+            if (!vassalStartTurn.containsKey(vassalCivID)) {
+                int currentLord = CFG.core.getCiv(vassalCivID).getPuppetOfCiv();
+                registerVassalStart(vassalCivID, currentLord);
+                return 0;
+            }
+            int startTurn = vassalStartTurn.get(vassalCivID);
+            return Math.max(0, GameCalendar.TURNID - startTurn);
+        } catch (Exception ex) {
+            return 0;
+        }
     }
 
     /**
@@ -140,6 +266,8 @@ public class VassalManager {
 
         public int yearsAsVassal = 0;
         public int reqYears = 5;
+        public int turnsAsVassal = 0;
+        public int reqTurns = 50;
         public boolean yearsOk = false;
 
         public float libertyDesire = 0.0f;
@@ -157,7 +285,7 @@ public class VassalManager {
                   .append(" / +").append((int)reqRelation).append("\n");
                 sb.append(yearsOk ? "✓ " : "✕ ")
                   .append("Термін васалітету: ").append(yearsAsVassal)
-                  .append(" / ").append(reqYears).append(" років\n");
+                  .append(" / ").append(reqYears).append(" р. (").append(turnsAsVassal).append(" / ").append(reqTurns).append(" х.)\n");
                 sb.append(libertyDesireOk ? "✓ " : "✕ ")
                   .append("Бажання свободи: ").append(CFG.getPrecision2(libertyDesire, 10))
                   .append("% / <").append((int)maxLibertyDesire).append("%\n");
@@ -170,7 +298,7 @@ public class VassalManager {
                   .append(" / +").append((int)reqRelation).append("\n");
                 sb.append(yearsOk ? "✓ " : "✕ ")
                   .append("Vassal duration: ").append(yearsAsVassal)
-                  .append(" / ").append(reqYears).append(" years\n");
+                  .append(" / ").append(reqYears).append(" yrs (").append(turnsAsVassal).append(" / ").append(reqTurns).append(" turns)\n");
                 sb.append(libertyDesireOk ? "✓ " : "✕ ")
                   .append("Liberty desire: ").append(CFG.getPrecision2(libertyDesire, 10))
                   .append("% / <").append((int)maxLibertyDesire).append("%\n");
@@ -203,7 +331,8 @@ public class VassalManager {
 
             // 2. Перевірка тривалості васалітету (>= 5 років або >= 50 ходів)
             status.yearsAsVassal = getVassalYears(vassalCivID);
-            status.yearsOk = (status.yearsAsVassal >= status.reqYears || GameCalendar.TURNID >= 50);
+            status.turnsAsVassal = getVassalTurns(vassalCivID);
+            status.yearsOk = (status.yearsAsVassal >= status.reqYears || status.turnsAsVassal >= status.reqTurns);
 
             // 3. Бажання свободи (< 50%)
             status.libertyDesire = CFG.core.getCiv(vassalCivID).getVassalLibertyDesire();
@@ -293,6 +422,10 @@ public class VassalManager {
             CFG.core.buildCivilizationsRegions_TextOver(lordCivID);
 
             CFG.core.getCiv(vassalCivID).setPuppetOfCivId(vassalCivID);
+            knownLords.remove(vassalCivID);
+            vassalStartYear.remove(vassalCivID);
+            vassalStartTurn.remove(vassalCivID);
+
             CFG.historyManager.addHistoryLog(new HistoryLog_Annexation(vassalCivID, lordCivID));
 
             int tPlayerID = CFG.core.getPlayerIDbyCivID(lordCivID);

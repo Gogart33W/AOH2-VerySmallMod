@@ -1938,7 +1938,7 @@ extends Menu {
                     nData.clear();
 
                     nData.add(new age.of.civilizations2.jakowski.lukasz.MenuE_HoverP.ME_Hover_2Type_Text(
-                        (st.yearsOk ? "✓ " : "✕ ") + (isUkr ? "Васалітет: " : "Duration: ") + st.yearsAsVassal + " / 5 " + (isUkr ? "років" : "years"),
+                        (st.yearsOk ? "✓ " : "✕ ") + (isUkr ? "Васалітет: " : "Duration: ") + st.yearsAsVassal + " / 5 " + (isUkr ? "р. (" : "yrs (") + st.turnsAsVassal + (isUkr ? "/50 х.)" : "/50 t.)"),
                         st.yearsOk ? CFG.COLOR_POSITIVE : CFG.COLOR_NEGATIVE_2));
                     nElements.add(new MEHover_2E(nData));
                     nData.clear();

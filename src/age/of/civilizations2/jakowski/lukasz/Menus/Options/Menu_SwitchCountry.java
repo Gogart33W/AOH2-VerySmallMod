@@ -1,6 +1,7 @@
 package age.of.civilizations2.jakowski.lukasz.Menus.Options;
 
 import age.of.civilizations2.jakowski.lukasz.Button.Classic.Button_Classic;
+import age.of.civilizations2.jakowski.lukasz.Button.Classic.Button_Classic_Classic_Search;
 import age.of.civilizations2.jakowski.lukasz.Button.Classic.Button_Classic_CivilizationAndFlag;
 import age.of.civilizations2.jakowski.lukasz.Button.MenuElemUI;
 import age.of.civilizations2.jakowski.lukasz.CFG;
@@ -21,14 +22,20 @@ import java.util.List;
  * Menu_SwitchCountry - повноекранне меню зміни поточної цивілізації гравця.
  * Займає весь екран (0, 0, CFG.GAMEWIDTH, CFG.GAMEHEIGHT), що унеможливлює
  * будь-які випадкові натискання на карту, панелі дій чи сторонні підказки під меню.
+ * Містить рядок пошуку цивілізацій за назвою або тегом.
  */
 public class Menu_SwitchCountry extends Menu {
     private static int switchCountryMenuID = -1;
     private static Menu_SwitchCountry instance = null;
+    private static String searchQuery = "";
 
     private List<Integer> lCivIDs = new ArrayList<Integer>();
+    private List<Integer> lCivBtnIDs = new ArrayList<Integer>();
+
     private int idCloseBtnTop = -1;
     private int idCloseBtnBottom = -1;
+    private int idSearchBtn = -1;
+    private int idClearSearchBtn = -1;
     private int idActiveProvBtn = -1;
     private int activeProvCivID = -1;
     private int idCatchAll = -1;
@@ -59,6 +66,7 @@ public class Menu_SwitchCountry extends Menu {
     }
 
     public static void close(boolean reopenOptions) {
+        searchQuery = "";
         if (instance != null) {
             instance.setVisibleM(false);
         }
@@ -69,6 +77,7 @@ public class Menu_SwitchCountry extends Menu {
 
     public void rebuild() {
         this.lCivIDs.clear();
+        this.lCivBtnIDs.clear();
         List<MenuElemUI> menuElements = new ArrayList<MenuElemUI>();
 
         int btnW = Math.min((int)(CFG.CIV_INFO_MENU_WIDTH * 1.8f), CFG.GAMEWIDTH - CFG.PADD * 6);
@@ -92,10 +101,47 @@ public class Menu_SwitchCountry extends Menu {
         this.idCloseBtnTop = menuElements.size() - 1;
         curY += btnH + CFG.PADD * 2;
 
-        // 3. Кнопка швидкого переходу на країну обраної провінції
+        // 3. Рядок пошуку
+        boolean hasFilter = !searchQuery.isEmpty();
+        int clearBtnW = hasFilter ? (btnH * 3) : 0;
+        int searchBtnW = hasFilter ? (btnW - clearBtnW - CFG.PADD) : btnW;
+
+        String searchLabel = hasFilter 
+                ? ((isUkr ? "🔍 Фільтр: \"" : "🔍 Filter: \"") + searchQuery + "\"")
+                : (isUkr ? "🔍 Пошук держави... (Натисніть тут)" : "🔍 Search Civilization... (Click here)");
+
+        Button_Classic_Classic_Search searchBtn = new Button_Classic_Classic_Search(
+                searchLabel,
+                -1,
+                btnX,
+                curY,
+                searchBtnW,
+                btnH,
+                true
+        );
+        menuElements.add(searchBtn);
+        this.idSearchBtn = menuElements.size() - 1;
+
+        this.idClearSearchBtn = -1;
+        if (hasFilter) {
+            Button_Classic clearBtn = new Button_Classic(
+                    isUkr ? "✕ Скинути" : "✕ Clear",
+                    -1,
+                    btnX + searchBtnW + CFG.PADD,
+                    curY,
+                    clearBtnW,
+                    btnH,
+                    true
+            );
+            menuElements.add(clearBtn);
+            this.idClearSearchBtn = menuElements.size() - 1;
+        }
+        curY += btnH + CFG.PADD * 2;
+
+        // 4. Кнопка швидкого переходу на країну обраної провінції
         this.idActiveProvBtn = -1;
         this.activeProvCivID = -1;
-        if (CFG.core.getActiveProvID() >= 0) {
+        if (CFG.core.getActiveProvID() >= 0 && !hasFilter) {
             int provCiv = CFG.core.getProv(CFG.core.getActiveProvID()).getCivId();
             int curPlayerCiv = CFG.core.getPlayer(CFG.PLAYER_TURN_ID).getCivId();
             if (provCiv > 0 && provCiv != curPlayerCiv && provCiv < CFG.core.getCivsSize()
@@ -119,12 +165,22 @@ public class Menu_SwitchCountry extends Menu {
             }
         }
 
-        // 4. Список усіх живих держав
+        // 5. Список усіх живих держав (із застосуванням фільтра пошуку)
         int curPlayerCiv = CFG.core.getPlayer(CFG.PLAYER_TURN_ID).getCivId();
         List<Integer> aliveCivs = new ArrayList<Integer>();
+        String queryLower = searchQuery.toLowerCase().trim();
+
         for (int i = 1; i < CFG.core.getCivsSize(); i++) {
             if (CFG.core.getCiv(i).getNumOfProvs() > 0) {
-                aliveCivs.add(i);
+                if (queryLower.isEmpty()) {
+                    aliveCivs.add(i);
+                } else {
+                    String cName = CFG.core.getCiv(i).getCivName().toLowerCase();
+                    String cTag = CFG.core.getCiv(i).getCivTag().toLowerCase();
+                    if (cName.contains(queryLower) || cTag.contains(queryLower)) {
+                        aliveCivs.add(i);
+                    }
+                }
             }
         }
 
@@ -139,6 +195,15 @@ public class Menu_SwitchCountry extends Menu {
                 );
             }
         });
+
+        if (aliveCivs.isEmpty() && hasFilter) {
+            String notFoundText = isUkr 
+                    ? ("За запитом \"" + searchQuery + "\" нічого не знайдено")
+                    : ("No civilizations found for \"" + searchQuery + "\"");
+            TextTitleStyle notFoundElem = new TextTitleStyle(notFoundText, -1, btnX, curY, btnW, btnH);
+            menuElements.add(notFoundElem);
+            curY += btnH + CFG.PADD * 2;
+        }
 
         for (int i = 0; i < aliveCivs.size(); i++) {
             int civID = aliveCivs.get(i);
@@ -161,17 +226,18 @@ public class Menu_SwitchCountry extends Menu {
             civBtn.setTextE(label);
             menuElements.add(civBtn);
             this.lCivIDs.add(civID);
+            this.lCivBtnIDs.add(menuElements.size() - 1);
             curY += btnH + CFG.PADD;
         }
 
-        // 5. Нижня кнопка закриття
+        // 6. Нижня кнопка закриття
         String closeTextBottom = isUkr ? "✕ Повернутися до гри (Закрити)" : "✕ Return to Game (Close)";
         Button_Classic closeBtnBottom = new Button_Classic(closeTextBottom, -1, btnX, curY, btnW, btnH, true);
         menuElements.add(closeBtnBottom);
         this.idCloseBtnBottom = menuElements.size() - 1;
         curY += btnH + CFG.PADD * 4;
 
-        // 6. Повноекранний елемент перехоплення для блокування будь-яких кліків та наведень курсору
+        // 7. Повноекранний елемент перехоплення для блокування будь-яких кліків та наведень курсору
         int totalHeight = Math.max(CFG.GAMEHEIGHT * 2, curY + CFG.GAMEHEIGHT);
         MenuElemUI catchAll = new MenuElemUI() {
             @Override
@@ -202,6 +268,28 @@ public class Menu_SwitchCountry extends Menu {
             return;
         }
 
+        if (iID == this.idSearchBtn) {
+            boolean isUkr = CFG.lang.get("LANGUAGENAME").equalsIgnoreCase("Українська");
+            com.badlogic.gdx.Gdx.input.getTextInput(new com.badlogic.gdx.Input.TextInputListener() {
+                @Override
+                public void input(String text) {
+                    searchQuery = (text != null) ? text.trim() : "";
+                    rebuild();
+                }
+
+                @Override
+                public void canceled() {
+                }
+            }, isUkr ? "Пошук країни" : "Search Civilization", searchQuery, isUkr ? "Введіть назву країни..." : "Enter civilization name...");
+            return;
+        }
+
+        if (this.idClearSearchBtn >= 0 && iID == this.idClearSearchBtn) {
+            searchQuery = "";
+            this.rebuild();
+            return;
+        }
+
         if (this.idActiveProvBtn >= 0 && iID == this.idActiveProvBtn) {
             if (this.activeProvCivID > 0) {
                 switchToCiv(this.activeProvCivID);
@@ -215,10 +303,9 @@ public class Menu_SwitchCountry extends Menu {
             return;
         }
 
-        int firstCivIndex = (this.idActiveProvBtn >= 0) ? (this.idActiveProvBtn + 1) : (this.idCloseBtnTop + 1);
-        int civIndex = iID - firstCivIndex;
-        if (civIndex >= 0 && civIndex < this.lCivIDs.size()) {
-            int targetCiv = this.lCivIDs.get(civIndex);
+        int civBtnIndex = this.lCivBtnIDs.indexOf(iID);
+        if (civBtnIndex >= 0 && civBtnIndex < this.lCivIDs.size()) {
+            int targetCiv = this.lCivIDs.get(civBtnIndex);
             switchToCiv(targetCiv);
             close(false);
         }
