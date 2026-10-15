@@ -140,6 +140,7 @@ extends Menu {
 
     public Menu_InGame_Civ_Actions() {
         int i;
+        age.of.civilizations2.jakowski.lukasz.Menus.Vassal.VassalManager.syncAllVassals();
         ArrayList<MenuElemUI> menuElems = new ArrayList<MenuElemUI>();
         int menuW = Menu_InGame_Civ.getMenuCivInfoWidth();
         int nPosY = 0;
@@ -1917,18 +1918,43 @@ extends Menu {
 
                 public void buildElemHover() {
                     boolean isUkr = CFG.lang.get("LANGUAGENAME").equalsIgnoreCase("Українська");
+                    int playerCiv = CFG.core.getPlayer(CFG.PLAYER_TURN_ID).getCivId();
+                    int vassalCiv = CFG.getActiveCivInfoId();
+                    age.of.civilizations2.jakowski.lukasz.Menus.Vassal.VassalManager.AnnexationStatus st = 
+                        age.of.civilizations2.jakowski.lukasz.Menus.Vassal.VassalManager.checkAnnexation(playerCiv, vassalCiv);
+
                     ArrayList<MEHover_2E> nElements = new ArrayList<MEHover_2E>();
                     ArrayList<age.of.civilizations2.jakowski.lukasz.MenuE_HoverP.ME_Hover_2Type> nData = new ArrayList<age.of.civilizations2.jakowski.lukasz.MenuE_HoverP.ME_Hover_2Type>();
                     nData.add(new ME_Hover_2Type_Text_Big(isUkr ? "Мирне приєднання васала" : "Peaceful Annexation", CFG.COLOR_HOVER_TITLE));
                     nData.add(new ME_Hover_2Type_Image_Big(Images.diploUnion, CFG.PADD, 0));
-                    nData.add(new ME_Hover_2Type_Flag_Big(CFG.getActiveCivInfoId(), CFG.PADD, 0));
+                    nData.add(new ME_Hover_2Type_Flag_Big(vassalCiv, CFG.PADD, 0));
                     nElements.add(new MEHover_2E(nData));
                     nData.clear();
-                    nData.add(new age.of.civilizations2.jakowski.lukasz.MenuE_HoverP.ME_Hover_2Type_TextDesc(isUkr 
-                        ? "Мирно інтегрувати цього васала та всі його території до складу вашої держави без війн та ультиматумів." 
-                        : "Peacefully integrate this vassal and all its territories into your realm without war or ultimatums."));
+
+                    nData.add(new age.of.civilizations2.jakowski.lukasz.MenuE_HoverP.ME_Hover_2Type_Text(
+                        (st.relationOk ? "✓ " : "✕ ") + (isUkr ? "Стосунки: " : "Relations: ") + CFG.getPrecision2(st.relation, 10) + " / +50",
+                        st.relationOk ? CFG.COLOR_POSITIVE : CFG.COLOR_NEGATIVE_2));
                     nElements.add(new MEHover_2E(nData));
                     nData.clear();
+
+                    nData.add(new age.of.civilizations2.jakowski.lukasz.MenuE_HoverP.ME_Hover_2Type_Text(
+                        (st.yearsOk ? "✓ " : "✕ ") + (isUkr ? "Васалітет: " : "Duration: ") + st.yearsAsVassal + " / 5 " + (isUkr ? "років" : "years"),
+                        st.yearsOk ? CFG.COLOR_POSITIVE : CFG.COLOR_NEGATIVE_2));
+                    nElements.add(new MEHover_2E(nData));
+                    nData.clear();
+
+                    nData.add(new age.of.civilizations2.jakowski.lukasz.MenuE_HoverP.ME_Hover_2Type_Text(
+                        (st.libertyDesireOk ? "✓ " : "✕ ") + (isUkr ? "Бажання свободи: " : "Liberty: ") + CFG.getPrecision2(st.libertyDesire, 10) + "% / <50%",
+                        st.libertyDesireOk ? CFG.COLOR_POSITIVE : CFG.COLOR_NEGATIVE_2));
+                    nElements.add(new MEHover_2E(nData));
+                    nData.clear();
+
+                    nData.add(new age.of.civilizations2.jakowski.lukasz.MenuE_HoverP.ME_Hover_2Type_Text(
+                        (st.peaceOk ? "✓ " : "✕ ") + (isUkr ? "Стан: " : "Status: ") + (st.peaceOk ? (isUkr ? "Мир" : "Peace") : (isUkr ? "Війна" : "At War")),
+                        st.peaceOk ? CFG.COLOR_POSITIVE : CFG.COLOR_NEGATIVE_2));
+                    nElements.add(new MEHover_2E(nData));
+                    nData.clear();
+
                     this.menuElemHover = new ME_Hover_v2(nElements);
                 }
             });
