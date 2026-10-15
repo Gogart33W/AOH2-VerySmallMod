@@ -1,0 +1,24 @@
+# Build and compiled files
+build/
+bin/
+out/
+target/
+*.class
+*.jar
+*.war
+
+# Game binaries and logs (NEVER commit game files)
+game.jar*
+*.log
+hs_err_pid*
+
+# Tools and temporary decompiled sources
+tools/
+decompiled/
+
+# IDE / OS specific files
+.idea/
+*.iml
+.vscode/
+.DS_Store
+Thumbs.db
