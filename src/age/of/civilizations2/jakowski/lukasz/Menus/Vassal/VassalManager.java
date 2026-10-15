@@ -1,14 +1,15 @@
 package age.of.civilizations2.jakowski.lukasz.Menus.Vassal;
 
+import age.of.civilizations2.jakowski.lukasz.Alliance;
 import age.of.civilizations2.jakowski.lukasz.CFG;
 import age.of.civilizations2.jakowski.lukasz.GameCalendar;
 import age.of.civilizations2.jakowski.lukasz.GameValues.GameValues;
 import age.of.civilizations2.jakowski.lukasz.HistoryLog.HistoryLog_Annexation;
-import age.of.civilizations2.jakowski.lukasz.HistoryLog.HistoryLog_JoinAlliance;
 import age.of.civilizations2.jakowski.lukasz.SFXManager;
+import com.badlogic.gdx.Gdx;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * VassalManager - менеджер механік васалітету:
@@ -18,10 +19,10 @@ import java.util.Map;
  * 4. Налаштування порогів пропозиції васалізації (стосунки 50.0, коефіцієнт бюджету 5.0).
  */
 public class VassalManager {
-    // Збереження року та ходу початку васалітету для кожної держави
-    private static Map<Integer, Integer> vassalStartYear = new HashMap<Integer, Integer>();
-    private static Map<Integer, Integer> vassalStartTurn = new HashMap<Integer, Integer>();
-    private static Map<Integer, Integer> knownLords = new HashMap<Integer, Integer>();
+    // Потокобезпечне збереження року та ходу початку васалітету для кожної держави
+    private static final Map<Integer, Integer> vassalStartYear = new ConcurrentHashMap<Integer, Integer>();
+    private static final Map<Integer, Integer> vassalStartTurn = new ConcurrentHashMap<Integer, Integer>();
+    private static final Map<Integer, Integer> knownLords = new ConcurrentHashMap<Integer, Integer>();
 
     static {
         applyDiplomacyValues();
@@ -87,10 +88,10 @@ public class VassalManager {
     /**
      * Повна синхронізація конкретного васала із сюзереном:
      * - Релігія
-     * - Державний устрій (ідеологія, прапор, назва)
+     * - Державний устрій (ідеологія, тег)
      * - Альянс
      */
-    public static void syncVassalWithLord(int lordCivID, int vassalCivID) {
+    public static void syncVassalWithLord(int lordCivID, final int vassalCivID) {
         try {
             if (lordCivID <= 0 || vassalCivID <= 0 || lordCivID == vassalCivID) return;
             if (lordCivID >= CFG.core.getCivsSize() || vassalCivID >= CFG.core.getCivsSize()) return;
@@ -117,22 +118,29 @@ public class VassalManager {
                 // Встановлюємо ідеологію безпосередньо в об'єкт цивілізації
                 CFG.core.getCiv(vassalCivID).setIdeology(lordIdeology);
 
-                // Оновлюємо тег цивілізації та назву
+                // Оновлюємо тег цивілізації
                 if (!currentTag.equals(targetTag)) {
                     CFG.core.getCiv(vassalCivID).setCivTag(targetTag);
-                    try {
-                        CFG.core.getCiv(vassalCivID).loadFlag();
-                    } catch (Exception ignored) {
+                    // Перезавантажуємо прапор виключно на головному OpenGL потоці LibGDX
+                    if (Gdx.app != null) {
+                        try {
+                            Gdx.app.postRunnable(new Runnable() {
+                                @Override
+                                public void run() {
+                                    try {
+                                        if (vassalCivID > 0 && vassalCivID < CFG.core.getCivsSize()) {
+                                            CFG.core.getCiv(vassalCivID).loadFlag();
+                                        }
+                                    } catch (Exception ignored) {
+                                    }
+                                }
+                            });
+                        } catch (Exception ignored) {
+                        }
                     }
                 }
 
-                // Спроба оновити системні дані через core
-                try {
-                    CFG.core.updateCivilizationIdeology(vassalCivID, targetTag);
-                } catch (Exception ignored) {
-                }
-
-                // Гарантуємо, що id ідеології залишився вірним після будь-яких викликів
+                // Гарантуємо, що id ідеології встановлено вірно
                 CFG.core.getCiv(vassalCivID).setIdeology(lordIdeology);
             }
 
@@ -159,15 +167,23 @@ public class VassalManager {
             if (lordAlliance > 0 && lordAlliance < CFG.core.getAlliancesSize()) {
                 if (vassalAlliance != lordAlliance) {
                     if (vassalAlliance > 0 && vassalAlliance < CFG.core.getAlliancesSize()) {
-                        CFG.core.getAlliance(vassalAlliance).removeCivilization(vassalCivID);
+                        Alliance oldAll = CFG.core.getAlliance(vassalAlliance);
+                        if (oldAll != null) {
+                            oldAll.removeCivilization(vassalCivID);
+                        }
                     }
-                    CFG.core.getAlliance(lordAlliance).addCivilization(vassalCivID);
-                    CFG.core.getCiv(vassalCivID).setAlliance(lordAlliance);
-                    CFG.historyManager.addHistoryLog(new HistoryLog_JoinAlliance(vassalCivID, lordAlliance));
+                    Alliance targetAll = CFG.core.getAlliance(lordAlliance);
+                    if (targetAll != null) {
+                        targetAll.addCivilization(vassalCivID);
+                        CFG.core.getCiv(vassalCivID).setAlliance(lordAlliance);
+                    }
                 }
             } else if (lordAlliance == 0 && vassalAlliance > 0) {
                 if (vassalAlliance < CFG.core.getAlliancesSize()) {
-                    CFG.core.getAlliance(vassalAlliance).removeCivilization(vassalCivID);
+                    Alliance oldAll = CFG.core.getAlliance(vassalAlliance);
+                    if (oldAll != null) {
+                        oldAll.removeCivilization(vassalCivID);
+                    }
                 }
                 CFG.core.getCiv(vassalCivID).setAlliance(0);
             }

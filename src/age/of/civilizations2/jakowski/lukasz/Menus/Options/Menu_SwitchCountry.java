@@ -67,6 +67,12 @@ public class Menu_SwitchCountry extends Menu {
 
     public static void close(boolean reopenOptions) {
         searchQuery = "";
+        try {
+            if (CFG.menus.getKeyboard() != null) {
+                CFG.menus.getKeyboard().setVisibleM(false);
+            }
+        } catch (Exception ignored) {
+        }
         if (instance != null) {
             instance.setVisibleM(false);
         }
@@ -269,18 +275,40 @@ public class Menu_SwitchCountry extends Menu {
         }
 
         if (iID == this.idSearchBtn) {
-            boolean isUkr = CFG.lang.get("LANGUAGENAME").equalsIgnoreCase("Українська");
-            com.badlogic.gdx.Gdx.input.getTextInput(new com.badlogic.gdx.Input.TextInputListener() {
+            CFG.keybMess = searchQuery;
+            CFG.keyboardWrite = new CFG.Keyboard_Action_Write() {
                 @Override
-                public void input(String text) {
-                    searchQuery = (text != null) ? text.trim() : "";
+                public void action(String text) {
+                    searchQuery = (CFG.keybMess != null) ? CFG.keybMess.trim() : "";
                     rebuild();
                 }
-
+            };
+            CFG.keyboardSave = new CFG.Keyboard_Action() {
                 @Override
-                public void canceled() {
+                public void action() {
+                    searchQuery = (CFG.keybMess != null) ? CFG.keybMess.trim() : "";
+                    rebuild();
+                    try {
+                        if (CFG.menus.getKeyboard() != null) {
+                            CFG.menus.getKeyboard().setVisibleM(false);
+                        }
+                    } catch (Exception ignored) {
+                    }
                 }
-            }, isUkr ? "Пошук країни" : "Search Civilization", searchQuery, isUkr ? "Введіть назву країни..." : "Enter civilization name...");
+            };
+            CFG.keyboardDelete = new CFG.Keyboard_Action() {
+                @Override
+                public void action() {
+                    searchQuery = (CFG.keybMess != null) ? CFG.keybMess.trim() : "";
+                    rebuild();
+                }
+            };
+            try {
+                if (CFG.menus.getKeyboard() != null) {
+                    CFG.menus.getKeyboard().setVisibleM(true);
+                }
+            } catch (Exception ignored) {
+            }
             return;
         }
 
@@ -371,6 +399,7 @@ public class Menu_SwitchCountry extends Menu {
 
             // 2. Призначаємо нову країну гравцю
             player.setCivId(newCivID);
+            CFG.core.getCiv(newCivID).setIsPlayer(true);
             CFG.SPECTATOR_MODE = false;
 
             // 3. Синхронізація васалів для нової країни
