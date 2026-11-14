@@ -324,28 +324,36 @@ public class Menu_AutoDevelop extends Menu {
         int pad = CFG.PADD;
 
         // 1. Адаптивні пропорційні розміри модального діалогу під реальну роздільну здатність
-        int menuW = Math.min((int)(gw * 0.94f), Math.min(940, gw - pad * 4));
+        int menuW = Math.min((int)(gw * 0.92f), Math.min(960, gw - pad * 4));
         int startX = (gw - menuW) / 2;
 
-        int titleH = Math.max(38, Math.min(48, (int)(gh * 0.065f)));
-        int statusH = Math.max(24, Math.min(28, (int)(gh * 0.038f)));
-        int masterBtnH = Math.max(42, Math.min(50, (int)(gh * 0.068f)));
-        int colHeaderH = Math.max(26, Math.min(30, (int)(gh * 0.040f)));
-        int btnH = Math.max(38, Math.min(44, (int)(gh * 0.058f)));
-        int smallBtnH = Math.max(30, Math.min(36, (int)(gh * 0.048f)));
-        int actionBtnH = Math.max(42, Math.min(48, (int)(gh * 0.065f)));
-        int closeBottomH = Math.max(36, Math.min(42, (int)(gh * 0.055f)));
+        // Коефіцієнт масштабування висоти від 720p до 1080p+ (0.0 на 720p, 1.0 на 1080p)
+        float hRatio = Math.max(0.0f, Math.min(1.2f, (gh - 720f) / (1080f - 720f)));
 
-        int gapS = Math.max(2, pad / 2);
-        int gapM = Math.max(4, pad);
-        int gapL = Math.max(6, (int)(pad * 1.5f));
+        // Відстані по висоті (збільшено у 2 - 2.5 рази за вимогою, щоб кнопки не злипалися і не залазили одна на одну!)
+        // gapS: між інформаційними рядками (було 2px -> стало 6-8px)
+        // gapM: основний проміжний рядковий інтервал між кнопками (було 4px -> стало 10-13px)
+        // gapL: розділовий інтервал між логічними блоками (було 6px -> стало 16-20px)
+        int gapS = Math.round(6f + 2f * hRatio);
+        int gapM = Math.round(10f + 3f * hRatio);
+        int gapL = Math.round(16f + 4f * hRatio);
 
-        int colGap = Math.max(6, pad * 2);
+        // Висоти елементів меню
+        int titleH = Math.round(38f + 10f * hRatio);
+        int statusH = Math.round(24f + 5f * hRatio);
+        int masterBtnH = Math.round(42f + 8f * hRatio);
+        int colHeaderH = Math.round(26f + 5f * hRatio);
+        int btnH = Math.round(38f + 6f * hRatio);
+        int smallBtnH = Math.round(32f + 5f * hRatio);
+        int actionBtnH = Math.round(42f + 8f * hRatio);
+        int closeBottomH = Math.round(36f + 6f * hRatio);
+
+        int colGap = Math.round(12f + 6f * hRatio);
         int colW = (menuW - colGap) / 2;
         int col1X = startX;
         int col2X = startX + colW + colGap;
 
-        int padText = pad * 2;
+        int padText = Math.max(8, pad * 2);
 
         // Синхронізована висота 8 рядків колонок:
         // 1. Header (colHeaderH + gapM)
@@ -405,7 +413,7 @@ public class Menu_AutoDevelop extends Menu {
         String civName = (pCiv != null) ? pCiv.getCivName() : (isUkr ? "Держава" : "Civilization");
         int numProvs = (pCiv != null) ? pCiv.getNumOfProvs() : 0;
 
-        int statusGap = Math.max(3, pad);
+        int statusGap = Math.max(6, Math.round(6f + 3f * hRatio));
 
         String civFull = (isUkr ? "Держава: " : "Civ: ") + civName + " (" + numProvs + " " + getProvincesPlural(numProvs, isUkr) + ")";
         InfoCell civCell = new InfoCell(fitText(civFull, menuW - padText), startX, curY, menuW, statusH);
@@ -482,6 +490,10 @@ public class Menu_AutoDevelop extends Menu {
         menuElements.add(h2);
         rowY += colHeaderH + gapM;
 
+        int prioGap = Math.max(5, Math.round(5f + 2f * hRatio));
+        int upDownW = Math.max(30, btnH - 6);
+        int prioNameW = colW - (upDownW * 2 + prioGap * 2);
+
         // --- РЯДОК 2: АСИМІЛЯЦІЯ / ПРІОРИТЕТ 1 ---
         String assiText = isUkr 
                 ? (AutoDevelopManager.autoAssimilate ? "[ВКЛ] Асиміляція (до 100% стабільності)" : "[ВИКЛ] Асиміляція (стабільність)")
@@ -490,9 +502,7 @@ public class Menu_AutoDevelop extends Menu {
         menuElements.add(assiBtn);
         this.idToggleAssimilate = menuElements.size() - 1;
 
-        int upDownW = btnH;
-        int prioNameW = colW - (upDownW * 2 + pad * 2);
-        this.addPriorityRow(menuElements, 0, col2X, rowY, prioNameW, upDownW, btnH, isUkr, padText);
+        this.addPriorityRow(menuElements, 0, col2X, rowY, prioNameW, upDownW, btnH, prioGap, isUkr, padText);
         rowY += btnH + gapM;
 
         // --- РЯДОК 3: ЯРМАРКИ / ПРІОРИТЕТ 2 ---
@@ -503,7 +513,7 @@ public class Menu_AutoDevelop extends Menu {
         menuElements.add(festBtn);
         this.idToggleFestival = menuElements.size() - 1;
 
-        this.addPriorityRow(menuElements, 1, col2X, rowY, prioNameW, upDownW, btnH, isUkr, padText);
+        this.addPriorityRow(menuElements, 1, col2X, rowY, prioNameW, upDownW, btnH, prioGap, isUkr, padText);
         rowY += btnH + gapM;
 
         // --- РЯДОК 4: НАУКА / ПРІОРИТЕТ 3 ---
@@ -514,7 +524,7 @@ public class Menu_AutoDevelop extends Menu {
         menuElements.add(devBtn);
         this.idToggleDevelopment = menuElements.size() - 1;
 
-        this.addPriorityRow(menuElements, 2, col2X, rowY, prioNameW, upDownW, btnH, isUkr, padText);
+        this.addPriorityRow(menuElements, 2, col2X, rowY, prioNameW, upDownW, btnH, prioGap, isUkr, padText);
         rowY += btnH + gapM;
 
         // --- РЯДОК 5: ЕКОНОМІКА / ПРІОРИТЕТ 4 ---
@@ -525,7 +535,7 @@ public class Menu_AutoDevelop extends Menu {
         menuElements.add(ecoBtn);
         this.idToggleEconomy = menuElements.size() - 1;
 
-        this.addPriorityRow(menuElements, 3, col2X, rowY, prioNameW, upDownW, btnH, isUkr, padText);
+        this.addPriorityRow(menuElements, 3, col2X, rowY, prioNameW, upDownW, btnH, prioGap, isUkr, padText);
         rowY += btnH + gapM;
 
         // --- РЯДОК 6: ПІДПИС ЦІЛІ ЕКОНОМІКИ / ПРЕСЕТИ ПРІОРИТЕТІВ (КОРОТКІ НАЗВИ, ПОВНА ШИРИНА) ---
@@ -535,7 +545,8 @@ public class Menu_AutoDevelop extends Menu {
         menuElements.add(new InfoCell(fitText(ecoTargetLabel, colW - padText), col1X, rowY, colW, smallBtnH));
 
         // 3 пресети на повну ширину правої колонки, короткі назви через fitText
-        int pPresetW = (colW - pad * 2) / 3;
+        int presetGap = Math.max(6, Math.round(6f + 2f * hRatio));
+        int pPresetW = (colW - presetGap * 2) / 3;
         boolean isBal = (AutoDevelopManager.priorities[0] == AutoDevelopManager.PRIO_ASSIMILATE && AutoDevelopManager.priorities[1] == AutoDevelopManager.PRIO_FESTIVAL);
         boolean isEco = (AutoDevelopManager.priorities[0] == AutoDevelopManager.PRIO_ECONOMY);
         boolean isStab = (AutoDevelopManager.priorities[0] == AutoDevelopManager.PRIO_ASSIMILATE && AutoDevelopManager.priorities[1] == AutoDevelopManager.PRIO_DEVELOPMENT);
@@ -551,21 +562,22 @@ public class Menu_AutoDevelop extends Menu {
         this.idPrioPresetBalanced = menuElements.size() - 1;
 
         Button_Classic pEco = isEco 
-                ? new Button_Classic(tEco, -1, col2X + pPresetW + pad, rowY, pPresetW, smallBtnH, true, true)
-                : new Button_Classic(tEco, -1, col2X + pPresetW + pad, rowY, pPresetW, smallBtnH, true);
+                ? new Button_Classic(tEco, -1, col2X + pPresetW + presetGap, rowY, pPresetW, smallBtnH, true, true)
+                : new Button_Classic(tEco, -1, col2X + pPresetW + presetGap, rowY, pPresetW, smallBtnH, true);
         menuElements.add(pEco);
         this.idPrioPresetEconomy = menuElements.size() - 1;
 
         Button_Classic pStab = isStab 
-                ? new Button_Classic(tStab, -1, col2X + (pPresetW + pad) * 2, rowY, pPresetW, smallBtnH, true, true)
-                : new Button_Classic(tStab, -1, col2X + (pPresetW + pad) * 2, rowY, pPresetW, smallBtnH, true);
+                ? new Button_Classic(tStab, -1, col2X + (pPresetW + presetGap) * 2, rowY, pPresetW, smallBtnH, true, true)
+                : new Button_Classic(tStab, -1, col2X + (pPresetW + presetGap) * 2, rowY, pPresetW, smallBtnH, true);
         menuElements.add(pStab);
         this.idPrioPresetStability = menuElements.size() - 1;
         rowY += smallBtnH + gapM;
 
         // --- РЯДОК 7: КНОПКИ РЕГУЛЮВАННЯ ЕКОНОМІКИ / РЕЗЕРВ ХОДІВ ---
-        int bW = (colW - pad * 5) / 6;
-        int bStep = bW + pad;
+        int ecoGap = Math.max(4, Math.round(4f + 2f * hRatio));
+        int bW = (colW - ecoGap * 5) / 6;
+        int bStep = bW + ecoGap;
 
         Button_Classic btnM10 = new Button_Classic("-10%", -1, col1X, rowY, bW, smallBtnH, true);
         menuElements.add(btnM10);
@@ -600,34 +612,35 @@ public class Menu_AutoDevelop extends Menu {
         this.idEco150 = menuElements.size() - 1;
 
         // Резерв ходів (підпис InfoCell, лише вибране значення має checked стиль)
-        int resLabelW = Math.max(90, (int)(colW * 0.22f));
-        int res4W = (colW - resLabelW - pad * 4) / 4;
-        int resStep = res4W + pad;
+        int resLabelW = Math.max(90, Math.round(92f + 16f * hRatio));
+        int resBtnGap = Math.max(5, Math.round(5f + 2f * hRatio));
+        int res4W = (colW - resLabelW - resBtnGap * 4) / 4;
+        int resStep = res4W + resBtnGap;
 
         String resMovesTitle = isUkr ? "Ходи:" : "Moves:";
         menuElements.add(new InfoCell(fitText(resMovesTitle, resLabelW - padText), col2X, rowY, resLabelW, smallBtnH));
 
         Button_Classic rM0 = (AutoDevelopManager.minMovePointsReserve == 0)
-                ? new Button_Classic("0.0", -1, col2X + resLabelW + pad, rowY, res4W, smallBtnH, true, true)
-                : new Button_Classic("0.0", -1, col2X + resLabelW + pad, rowY, res4W, smallBtnH, true);
+                ? new Button_Classic("0.0", -1, col2X + resLabelW + resBtnGap, rowY, res4W, smallBtnH, true, true)
+                : new Button_Classic("0.0", -1, col2X + resLabelW + resBtnGap, rowY, res4W, smallBtnH, true);
         menuElements.add(rM0);
         this.idResMove0 = menuElements.size() - 1;
 
         Button_Classic rM2 = (AutoDevelopManager.minMovePointsReserve == 20)
-                ? new Button_Classic("2.0", -1, col2X + resLabelW + pad + resStep, rowY, res4W, smallBtnH, true, true)
-                : new Button_Classic("2.0", -1, col2X + resLabelW + pad + resStep, rowY, res4W, smallBtnH, true);
+                ? new Button_Classic("2.0", -1, col2X + resLabelW + resBtnGap + resStep, rowY, res4W, smallBtnH, true, true)
+                : new Button_Classic("2.0", -1, col2X + resLabelW + resBtnGap + resStep, rowY, res4W, smallBtnH, true);
         menuElements.add(rM2);
         this.idResMove2 = menuElements.size() - 1;
 
         Button_Classic rM4 = (AutoDevelopManager.minMovePointsReserve == 40)
-                ? new Button_Classic("4.0", -1, col2X + resLabelW + pad + resStep * 2, rowY, res4W, smallBtnH, true, true)
-                : new Button_Classic("4.0", -1, col2X + resLabelW + pad + resStep * 2, rowY, res4W, smallBtnH, true);
+                ? new Button_Classic("4.0", -1, col2X + resLabelW + resBtnGap + resStep * 2, rowY, res4W, smallBtnH, true, true)
+                : new Button_Classic("4.0", -1, col2X + resLabelW + resBtnGap + resStep * 2, rowY, res4W, smallBtnH, true);
         menuElements.add(rM4);
         this.idResMove4 = menuElements.size() - 1;
 
         Button_Classic rM6 = (AutoDevelopManager.minMovePointsReserve == 60)
-                ? new Button_Classic("6.0", -1, col2X + resLabelW + pad + resStep * 3, rowY, res4W, smallBtnH, true, true)
-                : new Button_Classic("6.0", -1, col2X + resLabelW + pad + resStep * 3, rowY, res4W, smallBtnH, true);
+                ? new Button_Classic("6.0", -1, col2X + resLabelW + resBtnGap + resStep * 3, rowY, res4W, smallBtnH, true, true)
+                : new Button_Classic("6.0", -1, col2X + resLabelW + resBtnGap + resStep * 3, rowY, res4W, smallBtnH, true);
         menuElements.add(rM6);
         this.idResMove6 = menuElements.size() - 1;
         rowY += smallBtnH + gapM;
@@ -645,26 +658,26 @@ public class Menu_AutoDevelop extends Menu {
         menuElements.add(new InfoCell(fitText(resGoldTitle, resLabelW - padText), col2X, rowY, resLabelW, smallBtnH));
 
         Button_Classic rG0 = (AutoDevelopManager.minGoldReserve == 0)
-                ? new Button_Classic("0", -1, col2X + resLabelW + pad, rowY, res4W, smallBtnH, true, true)
-                : new Button_Classic("0", -1, col2X + resLabelW + pad, rowY, res4W, smallBtnH, true);
+                ? new Button_Classic("0", -1, col2X + resLabelW + resBtnGap, rowY, res4W, smallBtnH, true, true)
+                : new Button_Classic("0", -1, col2X + resLabelW + resBtnGap, rowY, res4W, smallBtnH, true);
         menuElements.add(rG0);
         this.idResGold0 = menuElements.size() - 1;
 
         Button_Classic rG1k = (AutoDevelopManager.minGoldReserve == 1000)
-                ? new Button_Classic("1 000", -1, col2X + resLabelW + pad + resStep, rowY, res4W, smallBtnH, true, true)
-                : new Button_Classic("1 000", -1, col2X + resLabelW + pad + resStep, rowY, res4W, smallBtnH, true);
+                ? new Button_Classic("1 000", -1, col2X + resLabelW + resBtnGap + resStep, rowY, res4W, smallBtnH, true, true)
+                : new Button_Classic("1 000", -1, col2X + resLabelW + resBtnGap + resStep, rowY, res4W, smallBtnH, true);
         menuElements.add(rG1k);
         this.idResGold1k = menuElements.size() - 1;
 
         Button_Classic rG5k = (AutoDevelopManager.minGoldReserve == 5000)
-                ? new Button_Classic("5 000", -1, col2X + resLabelW + pad + resStep * 2, rowY, res4W, smallBtnH, true, true)
-                : new Button_Classic("5 000", -1, col2X + resLabelW + pad + resStep * 2, rowY, res4W, smallBtnH, true);
+                ? new Button_Classic("5 000", -1, col2X + resLabelW + resBtnGap + resStep * 2, rowY, res4W, smallBtnH, true, true)
+                : new Button_Classic("5 000", -1, col2X + resLabelW + resBtnGap + resStep * 2, rowY, res4W, smallBtnH, true);
         menuElements.add(rG5k);
         this.idResGold5k = menuElements.size() - 1;
 
         Button_Classic rG10k = (AutoDevelopManager.minGoldReserve == 10000)
-                ? new Button_Classic("10 000", -1, col2X + resLabelW + pad + resStep * 3, rowY, res4W, smallBtnH, true, true)
-                : new Button_Classic("10 000", -1, col2X + resLabelW + pad + resStep * 3, rowY, res4W, smallBtnH, true);
+                ? new Button_Classic("10 000", -1, col2X + resLabelW + resBtnGap + resStep * 3, rowY, res4W, smallBtnH, true, true)
+                : new Button_Classic("10 000", -1, col2X + resLabelW + resBtnGap + resStep * 3, rowY, res4W, smallBtnH, true);
         menuElements.add(rG10k);
         this.idResGold10k = menuElements.size() - 1;
         rowY += smallBtnH;
@@ -698,7 +711,7 @@ public class Menu_AutoDevelop extends Menu {
         super.setVisibleM(false);
     }
 
-    private void addPriorityRow(List<MenuElemUI> menuElements, int i, int col2X, int rowY, int prioNameW, int upDownW, int btnH, boolean isUkr, int padText) {
+    private void addPriorityRow(List<MenuElemUI> menuElements, int i, int col2X, int rowY, int prioNameW, int upDownW, int btnH, int gap, boolean isUkr, int padText) {
         int prioType = AutoDevelopManager.priorities[i];
         String name = AutoDevelopManager.getPriorityName(prioType, isUkr);
         String rowText = "[ " + (i + 1) + " ] " + name;
@@ -708,12 +721,12 @@ public class Menu_AutoDevelop extends Menu {
         this.idPrioRow[i] = menuElements.size() - 1;
 
         boolean canUp = (i > 0);
-        Button_Classic upBtn = new Button_Classic("^", -1, col2X + prioNameW + CFG.PADD, rowY, upDownW, btnH, canUp);
+        Button_Classic upBtn = new Button_Classic("^", -1, col2X + prioNameW + gap, rowY, upDownW, btnH, canUp);
         menuElements.add(upBtn);
         this.idPrioUp[i] = menuElements.size() - 1;
 
         boolean canDown = (i < 3);
-        Button_Classic downBtn = new Button_Classic("v", -1, col2X + prioNameW + CFG.PADD + upDownW + CFG.PADD, rowY, upDownW, btnH, canDown);
+        Button_Classic downBtn = new Button_Classic("v", -1, col2X + prioNameW + gap + upDownW + gap, rowY, upDownW, btnH, canDown);
         menuElements.add(downBtn);
         this.idPrioDown[i] = menuElements.size() - 1;
     }
@@ -981,9 +994,10 @@ public class Menu_AutoDevelop extends Menu {
         IMGManager.getIMG(Images.pix255).draw(oSB, this.dialogStartX + this.dialogWidth + pad - 1, this.dialogStartY - pad, 1, this.dialogHeight + pad * 2);
 
         // 4. М'які підкладки під ліву та праву колонки (однакової висоти!)
+        int colBgPad = Math.max(6, Math.min(12, CFG.PADD * 2));
         oSB.setColor(new Color(0.0f, 0.0f, 0.0f, 0.22f));
-        IMGManager.getIMG(Images.pix255).draw(oSB, this.col1XPos - CFG.PADD, this.columnsStartY - CFG.PADD, this.colWidth + CFG.PADD * 2, this.columnsHeight + CFG.PADD * 2);
-        IMGManager.getIMG(Images.pix255).draw(oSB, this.col2XPos - CFG.PADD, this.columnsStartY - CFG.PADD, this.colWidth + CFG.PADD * 2, this.columnsHeight + CFG.PADD * 2);
+        IMGManager.getIMG(Images.pix255).draw(oSB, this.col1XPos - colBgPad, this.columnsStartY - colBgPad, this.colWidth + colBgPad * 2, this.columnsHeight + colBgPad * 2);
+        IMGManager.getIMG(Images.pix255).draw(oSB, this.col2XPos - colBgPad, this.columnsStartY - colBgPad, this.colWidth + colBgPad * 2, this.columnsHeight + colBgPad * 2);
 
         oSB.setColor(Color.WHITE);
 
