@@ -16,7 +16,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Menu_AutoDevelop - елегантне, просторе та професійне вікно налаштування та запуску
+ * Menu_AutoDevelop - ідеально збалансоване, симетричне та просторе вікно
  * автоматичного розвитку провінцій держави.
  */
 public class Menu_AutoDevelop extends Menu {
@@ -103,13 +103,13 @@ public class Menu_AutoDevelop extends Menu {
         List<MenuElemUI> menuElements = new ArrayList<MenuElemUI>();
         boolean isUkr = CFG.lang.get("LANGUAGENAME").equalsIgnoreCase("Українська");
 
-        // 1. Адаптивні пропорційні розміри діалогу
+        // 1. Адаптивні розміри діалогу
         int menuW = Math.min(840, CFG.GAMEWIDTH - CFG.PADD * 6);
         int startX = (CFG.GAMEWIDTH - menuW) / 2;
 
         int availableH = CFG.GAMEHEIGHT - CFG.PADD * 6;
-        int btnH = Math.min(44, Math.max(34, availableH / 21));
-        int smallBtnH = Math.min(34, Math.max(26, availableH / 26));
+        int btnH = Math.min(42, Math.max(34, availableH / 22));
+        int smallBtnH = Math.min(32, Math.max(26, availableH / 27));
         int titleH = btnH;
 
         int colGap = CFG.PADD * 3;
@@ -117,19 +117,26 @@ public class Menu_AutoDevelop extends Menu {
         int col1X = startX;
         int col2X = startX + colW + colGap;
 
-        // Розрахунок повної висоти для вертикального центрування
-        int rightColContentH = smallBtnH + CFG.PADD + (4 * (btnH + CFG.PADD)) + smallBtnH + CFG.PADD * 2
-                + smallBtnH + CFG.PADD + (smallBtnH * 2 + CFG.PADD * 2) + (smallBtnH * 2 + CFG.PADD * 2);
-        int totalExpectedH = titleH + CFG.PADD + smallBtnH + CFG.PADD + smallBtnH + CFG.PADD * 2
-                + btnH + CFG.PADD * 2 + rightColContentH + CFG.PADD * 2 + (int)(btnH * 1.15f) + CFG.PADD + btnH;
+        // Повна синхронізована висота 8 рядків колонок:
+        // Рядок 1: Header (smallBtnH + PADD)
+        // Рядок 2..5: Modules / Prio (4 * (btnH + PADD))
+        // Рядок 6: Target Label / Presets (smallBtnH + PADD)
+        // Рядок 7: Eco Buttons / Move Reserve (smallBtnH + PADD)
+        // Рядок 8: Notifications / Gold Reserve (smallBtnH)
+        int syncedColumnsH = (smallBtnH + CFG.PADD) + (4 * (btnH + CFG.PADD)) + (smallBtnH + CFG.PADD) + (smallBtnH + CFG.PADD) + smallBtnH;
 
-        int startY = Math.max(CFG.PADD * 2, (CFG.GAMEHEIGHT - totalExpectedH) / 2);
+        int totalDialogH = (titleH + CFG.PADD) + (smallBtnH + CFG.PADD) + (smallBtnH + CFG.PADD * 2)
+                + (btnH + CFG.PADD * 2) + syncedColumnsH + (CFG.PADD * 2) + (int)(btnH * 1.15f) + CFG.PADD + btnH;
+
+        // Ідеальне центрування по вертикалі
+        int startY = Math.max(CFG.PADD * 2, (CFG.GAMEHEIGHT - totalDialogH) / 2);
         int curY = startY;
 
-        // Зберігаємо геометрію для draw()
+        // Зберігаємо геометрію для правильного відмалювання підкладок у draw()
         this.dialogStartX = startX;
         this.dialogStartY = startY;
         this.dialogWidth = menuW;
+        this.dialogHeight = totalDialogH;
         this.col1XPos = col1X;
         this.col2XPos = col2X;
         this.colWidth = colW;
@@ -145,7 +152,7 @@ public class Menu_AutoDevelop extends Menu {
         this.idCloseTop = menuElements.size() - 1;
         curY += titleH + CFG.PADD;
 
-        // 3. Дані гравця та ресурси
+        // 3. Дані держави та ресурси
         int playerCivID = -1;
         try {
             if (CFG.core != null && CFG.core.getPlayer(CFG.PLAYER_TURN_ID) != null) {
@@ -202,206 +209,178 @@ public class Menu_AutoDevelop extends Menu {
         curY += btnH + CFG.PADD * 2;
 
         this.columnsStartY = curY;
+        this.columnsHeight = syncedColumnsH;
 
-        // ==========================================
-        // ЛІВА КОЛОНКА: МОДУЛІ АВТОМАТИЗАЦІЇ
-        // ==========================================
-        int leftY = this.columnsStartY;
+        // =========================================================================
+        // СИНХРОНІЗОВАНІ РЯДКИ ЛІВОЇ ТА ПРАВОЇ КОЛОНОК (РЯДОК ЗА РЯДКОМ ПО ВИСОТІ)
+        // =========================================================================
 
+        int rowY = this.columnsStartY;
+
+        // --- РЯДОК 1: ЗАГОЛОВКИ КОЛОНОК ---
         String modHeader = isUkr ? "--- МОДУЛІ АВТОМАТИЗАЦІЇ ---" : "--- AUTOMATION MODULES ---";
-        menuElements.add(new Button_Classic(modHeader, -1, col1X, leftY, colW, smallBtnH, false));
-        leftY += smallBtnH + CFG.PADD;
+        menuElements.add(new Button_Classic(modHeader, -1, col1X, rowY, colW, smallBtnH, false));
 
-        // 1. Асиміляція
+        String prioHeader = isUkr ? "--- ЧЕРГА ПРІОРИТЕТІВ (1 -> 4) ---" : "--- PRIORITY ORDER (1 -> 4) ---";
+        menuElements.add(new Button_Classic(prioHeader, -1, col2X, rowY, colW, smallBtnH, false));
+        rowY += smallBtnH + CFG.PADD;
+
+        // --- РЯДОК 2: АСИМІЛЯЦІЯ / ПРІОРИТЕТ 1 ---
         String assiText = isUkr 
                 ? (AutoDevelopManager.autoAssimilate ? "[ВКЛ] Асиміляція (до 100% стабільності)" : "[ВИКЛ] Асиміляція (стабільність)")
                 : (AutoDevelopManager.autoAssimilate ? "[ON] Assimilation (to 100% stability)" : "[OFF] Assimilation");
-        Button_Classic assiBtn = new Button_Classic(assiText, -1, col1X, leftY, colW, btnH, true, AutoDevelopManager.autoAssimilate);
+        Button_Classic assiBtn = new Button_Classic(assiText, -1, col1X, rowY, colW, btnH, true, AutoDevelopManager.autoAssimilate);
         menuElements.add(assiBtn);
         this.idToggleAssimilate = menuElements.size() - 1;
-        leftY += btnH + CFG.PADD;
 
-        // 2. Ярмарки
+        int upDownW = Math.max(38, btnH * 11 / 10);
+        int prioNameW = colW - (upDownW * 2 + CFG.PADD * 2);
+
+        this.addPriorityRow(menuElements, 0, col2X, rowY, prioNameW, upDownW, btnH, isUkr);
+        rowY += btnH + CFG.PADD;
+
+        // --- РЯДОК 3: ЯРМАРКИ / ПРІОРИТЕТ 2 ---
         String festText = isUkr 
                 ? (AutoDevelopManager.autoFestival ? "[ВКЛ] Проведення ярмарок (щастя)" : "[ВИКЛ] Проведення ярмарок (щастя)")
                 : (AutoDevelopManager.autoFestival ? "[ON] Organize Festivals (happiness)" : "[OFF] Organize Festivals (happiness)");
-        Button_Classic festBtn = new Button_Classic(festText, -1, col1X, leftY, colW, btnH, true, AutoDevelopManager.autoFestival);
+        Button_Classic festBtn = new Button_Classic(festText, -1, col1X, rowY, colW, btnH, true, AutoDevelopManager.autoFestival);
         menuElements.add(festBtn);
         this.idToggleFestival = menuElements.size() - 1;
-        leftY += btnH + CFG.PADD;
 
-        // 3. Наука / Дослідження
+        this.addPriorityRow(menuElements, 1, col2X, rowY, prioNameW, upDownW, btnH, isUkr);
+        rowY += btnH + CFG.PADD;
+
+        // --- РЯДОК 4: НАУКА / ПРІОРИТЕТ 3 ---
         String devText = isUkr 
-                ? (AutoDevelopManager.autoInvestDevelopment ? "[ВКЛ] Дослідження (до рівня науки держави)" : "[ВИКЛ] Дослідження (наука)")
+                ? (AutoDevelopManager.autoInvestDevelopment ? "[ВКЛ] Дослідження (до рівня науки)" : "[ВИКЛ] Дослідження (наука)")
                 : (AutoDevelopManager.autoInvestDevelopment ? "[ON] Research (to Civ Tech Level)" : "[OFF] Research Development");
-        Button_Classic devBtn = new Button_Classic(devText, -1, col1X, leftY, colW, btnH, true, AutoInvestDevState());
+        Button_Classic devBtn = new Button_Classic(devText, -1, col1X, rowY, colW, btnH, true, AutoDevelopManager.autoInvestDevelopment);
         menuElements.add(devBtn);
         this.idToggleDevelopment = menuElements.size() - 1;
-        leftY += btnH + CFG.PADD;
 
-        // 4. Економіка
+        this.addPriorityRow(menuElements, 2, col2X, rowY, prioNameW, upDownW, btnH, isUkr);
+        rowY += btnH + CFG.PADD;
+
+        // --- РЯДОК 5: ЕКОНОМІКА / ПРІОРИТЕТ 4 ---
         String ecoText = isUkr 
                 ? (AutoDevelopManager.autoInvestEconomy ? "[ВКЛ] Розвиток економіки (інвестиції)" : "[ВИКЛ] Розвиток економіки (інвестиції)")
                 : (AutoDevelopManager.autoInvestEconomy ? "[ON] Economy Investments" : "[OFF] Economy Investments");
-        Button_Classic ecoBtn = new Button_Classic(ecoText, -1, col1X, leftY, colW, btnH, true, AutoDevelopManager.autoInvestEconomy);
+        Button_Classic ecoBtn = new Button_Classic(ecoText, -1, col1X, rowY, colW, btnH, true, AutoDevelopManager.autoInvestEconomy);
         menuElements.add(ecoBtn);
         this.idToggleEconomy = menuElements.size() - 1;
-        leftY += btnH + CFG.PADD;
 
-        // Регулювання цілі економіки
+        this.addPriorityRow(menuElements, 3, col2X, rowY, prioNameW, upDownW, btnH, isUkr);
+        rowY += btnH + CFG.PADD;
+
+        // --- РЯДОК 6: ПІДПИС ЦІЛІ ЕКОНОМІКИ / ПРЕСЕТИ ПРІОРИТЕТІВ ---
         String ecoTargetLabel = isUkr 
                 ? ("Цільова економіка: " + AutoDevelopManager.targetEcoPercentage + "% від населення")
                 : ("Target Economy: " + AutoDevelopManager.targetEcoPercentage + "% of Pop");
-        menuElements.add(new Button_Classic(ecoTargetLabel, -1, col1X, leftY, colW, smallBtnH, false));
-        leftY += smallBtnH + CFG.PADD;
+        menuElements.add(new Button_Classic(ecoTargetLabel, -1, col1X, rowY, colW, smallBtnH, false));
 
-        // 6 кнопок регулювання в один чистий рівний рядок
-        int bW = (colW - CFG.PADD * 5) / 6;
-        Button_Classic btnM10 = new Button_Classic("-10%", -1, col1X, leftY, bW, smallBtnH, true);
-        menuElements.add(btnM10);
-        this.idEcoM10 = menuElements.size() - 1;
+        // Пресети на правому боці
+        int pLabelW = (int)(colW * 0.26f);
+        int pPresetW = (colW - pLabelW - CFG.PADD * 3) / 3;
+        menuElements.add(new Button_Classic(isUkr ? "Пресети:" : "Presets:", -1, col2X, rowY, pLabelW, smallBtnH, false));
 
-        Button_Classic btnP10 = new Button_Classic("+10%", -1, col1X + bW + CFG.PADD, leftY, bW, smallBtnH, true);
-        menuElements.add(btnP10);
-        this.idEcoP10 = menuElements.size() - 1;
-
-        Button_Classic p80 = new Button_Classic("80%", -1, col1X + (bW + CFG.PADD) * 2, leftY, bW, smallBtnH, true, AutoDevelopManager.targetEcoPercentage == 80);
-        menuElements.add(p80);
-        this.idEco80 = menuElements.size() - 1;
-
-        Button_Classic p100 = new Button_Classic("100%", -1, col1X + (bW + CFG.PADD) * 3, leftY, bW, smallBtnH, true, AutoDevelopManager.targetEcoPercentage == 100);
-        menuElements.add(p100);
-        this.idEco100 = menuElements.size() - 1;
-
-        Button_Classic p120 = new Button_Classic("120%", -1, col1X + (bW + CFG.PADD) * 4, leftY, bW, smallBtnH, true, AutoDevelopManager.targetEcoPercentage == 120);
-        menuElements.add(p120);
-        this.idEco120 = menuElements.size() - 1;
-
-        Button_Classic p150 = new Button_Classic("150%", -1, col1X + (bW + CFG.PADD) * 5, leftY, bW, smallBtnH, true, AutoDevelopManager.targetEcoPercentage == 150);
-        menuElements.add(p150);
-        this.idEco150 = menuElements.size() - 1;
-        leftY += smallBtnH + CFG.PADD * 2;
-
-        // Сповіщення
-        String notifText = isUkr 
-                ? (AutoDevelopManager.showNotifications ? "[ВКЛ] Сповіщення про виконані дії" : "[ВИКЛ] Сповіщення про виконані дії")
-                : (AutoDevelopManager.showNotifications ? "[ON] Notifications" : "[OFF] Notifications");
-        Button_Classic notifBtn = new Button_Classic(notifText, -1, col1X, leftY, colW, smallBtnH, true, AutoDevelopManager.showNotifications);
-        menuElements.add(notifBtn);
-        this.idToggleNotifications = menuElements.size() - 1;
-        leftY += smallBtnH;
-
-        // ==========================================
-        // ПРАВА КОЛОНКА: ПРІОРИТЕТИ ТА РЕЗЕРВИ
-        // ==========================================
-        int rightY = this.columnsStartY;
-
-        String prioHeader = isUkr ? "--- ЧЕРГА ПРІОРИТЕТІВ (1 -> 4) ---" : "--- PRIORITY ORDER (1 -> 4) ---";
-        menuElements.add(new Button_Classic(prioHeader, -1, col2X, rightY, colW, smallBtnH, false));
-        rightY += smallBtnH + CFG.PADD;
-
-        // 4 рядки пріоритетів без налізань
-        int upDownW = Math.max(38, smallBtnH * 12 / 10);
-        int prioNameW = colW - (upDownW * 2 + CFG.PADD * 2);
-
-        for (int i = 0; i < 4; i++) {
-            int prioType = AutoDevelopManager.priorities[i];
-            String name = AutoDevelopManager.getPriorityName(prioType, isUkr);
-            String rowText = "[ " + (i + 1) + " ] " + name;
-
-            Button_Classic prioBtn = new Button_Classic(rowText, -1, col2X, rightY, prioNameW, btnH, true);
-            menuElements.add(prioBtn);
-            this.idPrioRow[i] = menuElements.size() - 1;
-
-            boolean canUp = (i > 0);
-            Button_Classic upBtn = new Button_Classic("^", -1, col2X + prioNameW + CFG.PADD, rightY, upDownW, btnH, canUp);
-            menuElements.add(upBtn);
-            this.idPrioUp[i] = menuElements.size() - 1;
-
-            boolean canDown = (i < 3);
-            Button_Classic downBtn = new Button_Classic("v", -1, col2X + prioNameW + CFG.PADD + upDownW + CFG.PADD, rightY, upDownW, btnH, canDown);
-            menuElements.add(downBtn);
-            this.idPrioDown[i] = menuElements.size() - 1;
-
-            rightY += btnH + CFG.PADD;
-        }
-
-        // Пресети пріоритетів
-        int pPresetW = (colW - CFG.PADD * 2) / 3;
         boolean isBal = (AutoDevelopManager.priorities[0] == AutoDevelopManager.PRIO_ASSIMILATE && AutoDevelopManager.priorities[1] == AutoDevelopManager.PRIO_FESTIVAL);
         boolean isEco = (AutoDevelopManager.priorities[0] == AutoDevelopManager.PRIO_ECONOMY);
         boolean isStab = (AutoDevelopManager.priorities[0] == AutoDevelopManager.PRIO_ASSIMILATE && AutoDevelopManager.priorities[1] == AutoDevelopManager.PRIO_DEVELOPMENT);
 
-        Button_Classic pBal = new Button_Classic(isUkr ? "Баланс" : "Balanced", -1, col2X, rightY, pPresetW, smallBtnH, true, isBal);
+        Button_Classic pBal = new Button_Classic(isUkr ? "Баланс" : "Balance", -1, col2X + pLabelW + CFG.PADD, rowY, pPresetW, smallBtnH, true, isBal);
         menuElements.add(pBal);
         this.idPrioPresetBalanced = menuElements.size() - 1;
 
-        Button_Classic pEco = new Button_Classic(isUkr ? "Економіка" : "Economy", -1, col2X + pPresetW + CFG.PADD, rightY, pPresetW, smallBtnH, true, isEco);
+        Button_Classic pEco = new Button_Classic(isUkr ? "Економіка" : "Economy", -1, col2X + pLabelW + CFG.PADD + (pPresetW + CFG.PADD), rowY, pPresetW, smallBtnH, true, isEco);
         menuElements.add(pEco);
         this.idPrioPresetEconomy = menuElements.size() - 1;
 
-        Button_Classic pStab = new Button_Classic(isUkr ? "Стабільність" : "Stability", -1, col2X + (pPresetW + CFG.PADD) * 2, rightY, pPresetW, smallBtnH, true, isStab);
+        Button_Classic pStab = new Button_Classic(isUkr ? "Стабільність" : "Stability", -1, col2X + pLabelW + CFG.PADD + (pPresetW + CFG.PADD) * 2, rowY, pPresetW, smallBtnH, true, isStab);
         menuElements.add(pStab);
         this.idPrioPresetStability = menuElements.size() - 1;
-        rightY += smallBtnH + CFG.PADD * 2;
+        rowY += smallBtnH + CFG.PADD;
 
-        // Захисні резерви
-        String resHeader = isUkr ? "--- ЗАХИСНІ РЕЗЕРВИ РЕСУРСІВ ---" : "--- SAFETY RESERVES ---";
-        menuElements.add(new Button_Classic(resHeader, -1, col2X, rightY, colW, smallBtnH, false));
-        rightY += smallBtnH + CFG.PADD;
+        // --- РЯДОК 7: КНОПКИ РЕГУЛЮВАННЯ ЕКОНОМІКИ / РЕЗЕРВ ХОДІВ ---
+        int bW = (colW - CFG.PADD * 5) / 6;
+        Button_Classic btnM10 = new Button_Classic("-10%", -1, col1X, rowY, bW, smallBtnH, true);
+        menuElements.add(btnM10);
+        this.idEcoM10 = menuElements.size() - 1;
 
-        // Резерв ходів
-        float moveResVal = (float)AutoDevelopManager.minMovePointsReserve / 10.0f;
-        String moveResText = isUkr ? ("Не витрачати ходи: " + moveResVal + " (для армії)") : ("Keep Move Points: " + moveResVal + " (for army)");
-        menuElements.add(new Button_Classic(moveResText, -1, col2X, rightY, colW, smallBtnH, false));
-        rightY += smallBtnH + CFG.PADD;
+        Button_Classic btnP10 = new Button_Classic("+10%", -1, col1X + bW + CFG.PADD, rowY, bW, smallBtnH, true);
+        menuElements.add(btnP10);
+        this.idEcoP10 = menuElements.size() - 1;
 
-        int m4W = (colW - CFG.PADD * 3) / 4;
-        Button_Classic rM0 = new Button_Classic("0.0", -1, col2X, rightY, m4W, smallBtnH, true, AutoDevelopManager.minMovePointsReserve == 0);
+        Button_Classic p80 = new Button_Classic("80%", -1, col1X + (bW + CFG.PADD) * 2, rowY, bW, smallBtnH, true, AutoDevelopManager.targetEcoPercentage == 80);
+        menuElements.add(p80);
+        this.idEco80 = menuElements.size() - 1;
+
+        Button_Classic p100 = new Button_Classic("100%", -1, col1X + (bW + CFG.PADD) * 3, rowY, bW, smallBtnH, true, AutoDevelopManager.targetEcoPercentage == 100);
+        menuElements.add(p100);
+        this.idEco100 = menuElements.size() - 1;
+
+        Button_Classic p120 = new Button_Classic("120%", -1, col1X + (bW + CFG.PADD) * 4, rowY, bW, smallBtnH, true, AutoDevelopManager.targetEcoPercentage == 120);
+        menuElements.add(p120);
+        this.idEco120 = menuElements.size() - 1;
+
+        Button_Classic p150 = new Button_Classic("150%", -1, col1X + (bW + CFG.PADD) * 5, rowY, bW, smallBtnH, true, AutoDevelopManager.targetEcoPercentage == 150);
+        menuElements.add(p150);
+        this.idEco150 = menuElements.size() - 1;
+
+        // Резерв ходів на правому боці
+        int resLabelW = (int)(colW * 0.38f);
+        int res4W = (colW - resLabelW - CFG.PADD * 4) / 4;
+
+        menuElements.add(new Button_Classic(isUkr ? "Резерв ходів:" : "Move Reserve:", -1, col2X, rowY, resLabelW, smallBtnH, false));
+
+        Button_Classic rM0 = new Button_Classic("0.0", -1, col2X + resLabelW + CFG.PADD, rowY, res4W, smallBtnH, true, AutoDevelopManager.minMovePointsReserve == 0);
         menuElements.add(rM0);
         this.idResMove0 = menuElements.size() - 1;
 
-        Button_Classic rM2 = new Button_Classic("2.0", -1, col2X + m4W + CFG.PADD, rightY, m4W, smallBtnH, true, AutoDevelopManager.minMovePointsReserve == 20);
+        Button_Classic rM2 = new Button_Classic("2.0", -1, col2X + resLabelW + CFG.PADD + (res4W + CFG.PADD), rowY, res4W, smallBtnH, true, AutoDevelopManager.minMovePointsReserve == 20);
         menuElements.add(rM2);
         this.idResMove2 = menuElements.size() - 1;
 
-        Button_Classic rM4 = new Button_Classic("4.0", -1, col2X + (m4W + CFG.PADD) * 2, rightY, m4W, smallBtnH, true, AutoDevelopManager.minMovePointsReserve == 40);
+        Button_Classic rM4 = new Button_Classic("4.0", -1, col2X + resLabelW + CFG.PADD + (res4W + CFG.PADD) * 2, rowY, res4W, smallBtnH, true, AutoDevelopManager.minMovePointsReserve == 40);
         menuElements.add(rM4);
         this.idResMove4 = menuElements.size() - 1;
 
-        Button_Classic rM6 = new Button_Classic("6.0", -1, col2X + (m4W + CFG.PADD) * 3, rightY, m4W, smallBtnH, true, AutoDevelopManager.minMovePointsReserve == 60);
+        Button_Classic rM6 = new Button_Classic("6.0", -1, col2X + resLabelW + CFG.PADD + (res4W + CFG.PADD) * 3, rowY, res4W, smallBtnH, true, AutoDevelopManager.minMovePointsReserve == 60);
         menuElements.add(rM6);
         this.idResMove6 = menuElements.size() - 1;
-        rightY += smallBtnH + CFG.PADD;
+        rowY += smallBtnH + CFG.PADD;
 
-        // Резерв золота
-        String goldResText = isUkr ? ("Резерв скарбниці: " + CFG.getNumberWthSpaces("" + AutoDevelopManager.minGoldReserve) + " золота") : ("Treasury Reserve: " + CFG.getNumberWthSpaces("" + AutoDevelopManager.minGoldReserve) + " gold");
-        menuElements.add(new Button_Classic(goldResText, -1, col2X, rightY, colW, smallBtnH, false));
-        rightY += smallBtnH + CFG.PADD;
+        // --- РЯДОК 8: ТУМБЛЕР СПОВІЩЕНЬ / РЕЗЕРВ ЗОЛОТА ---
+        String notifText = isUkr 
+                ? (AutoDevelopManager.showNotifications ? "[ВКЛ] Сповіщення про дії" : "[ВИКЛ] Сповіщення про дії")
+                : (AutoDevelopManager.showNotifications ? "[ON] Notifications" : "[OFF] Notifications");
+        Button_Classic notifBtn = new Button_Classic(notifText, -1, col1X, rowY, colW, smallBtnH, true, AutoDevelopManager.showNotifications);
+        menuElements.add(notifBtn);
+        this.idToggleNotifications = menuElements.size() - 1;
 
-        Button_Classic rG0 = new Button_Classic("0", -1, col2X, rightY, m4W, smallBtnH, true, AutoDevelopManager.minGoldReserve == 0);
+        // Резерв золота на правому боці
+        menuElements.add(new Button_Classic(isUkr ? "Резерв золота:" : "Gold Reserve:", -1, col2X, rowY, resLabelW, smallBtnH, false));
+
+        Button_Classic rG0 = new Button_Classic("0", -1, col2X + resLabelW + CFG.PADD, rowY, res4W, smallBtnH, true, AutoDevelopManager.minGoldReserve == 0);
         menuElements.add(rG0);
         this.idResGold0 = menuElements.size() - 1;
 
-        Button_Classic rG1k = new Button_Classic("1 000", -1, col2X + m4W + CFG.PADD, rightY, m4W, smallBtnH, true, AutoDevelopManager.minGoldReserve == 1000);
+        Button_Classic rG1k = new Button_Classic("1 000", -1, col2X + resLabelW + CFG.PADD + (res4W + CFG.PADD), rowY, res4W, smallBtnH, true, AutoDevelopManager.minGoldReserve == 1000);
         menuElements.add(rG1k);
         this.idResGold1k = menuElements.size() - 1;
 
-        Button_Classic rG5k = new Button_Classic("5 000", -1, col2X + (m4W + CFG.PADD) * 2, rightY, m4W, smallBtnH, true, AutoDevelopManager.minGoldReserve == 5000);
+        Button_Classic rG5k = new Button_Classic("5 000", -1, col2X + resLabelW + CFG.PADD + (res4W + CFG.PADD) * 2, rowY, res4W, smallBtnH, true, AutoDevelopManager.minGoldReserve == 5000);
         menuElements.add(rG5k);
         this.idResGold5k = menuElements.size() - 1;
 
-        Button_Classic rG10k = new Button_Classic("10 000", -1, col2X + (m4W + CFG.PADD) * 3, rightY, m4W, smallBtnH, true, AutoDevelopManager.minGoldReserve == 10000);
+        Button_Classic rG10k = new Button_Classic("10 000", -1, col2X + resLabelW + CFG.PADD + (res4W + CFG.PADD) * 3, rowY, res4W, smallBtnH, true, AutoDevelopManager.minGoldReserve == 10000);
         menuElements.add(rG10k);
         this.idResGold10k = menuElements.size() - 1;
-        rightY += smallBtnH;
-
-        this.columnsHeight = Math.max(leftY, rightY) - this.columnsStartY;
+        rowY += smallBtnH;
 
         // ==========================================
         // НИЖНЯ ПАНЕЛЬ: ДІЇ (ЗАПУСК ТА ЗАКРИТТЯ)
         // ==========================================
-        int bottomY = this.columnsStartY + this.columnsHeight + CFG.PADD * 2;
+        int bottomY = rowY + CFG.PADD * 2;
 
         int actionBtnH = (int)(btnH * 1.15f);
         String runText = isUkr ? "ЗАПУСТИТИ ЗАРАЗ (НА ПОТОЧНОМУ ХОДІ)" : "RUN AUTOMATION NOW (THIS TURN)";
@@ -426,8 +405,24 @@ public class Menu_AutoDevelop extends Menu {
         super.setVisibleM(false);
     }
 
-    private static boolean AutoInvestDevState() {
-        return AutoDevelopManager.autoInvestDevelopment;
+    private void addPriorityRow(List<MenuElemUI> menuElements, int i, int col2X, int rowY, int prioNameW, int upDownW, int btnH, boolean isUkr) {
+        int prioType = AutoDevelopManager.priorities[i];
+        String name = AutoDevelopManager.getPriorityName(prioType, isUkr);
+        String rowText = "[ " + (i + 1) + " ] " + name;
+
+        Button_Classic prioBtn = new Button_Classic(rowText, -1, col2X, rowY, prioNameW, btnH, true);
+        menuElements.add(prioBtn);
+        this.idPrioRow[i] = menuElements.size() - 1;
+
+        boolean canUp = (i > 0);
+        Button_Classic upBtn = new Button_Classic("^", -1, col2X + prioNameW + CFG.PADD, rowY, upDownW, btnH, canUp);
+        menuElements.add(upBtn);
+        this.idPrioUp[i] = menuElements.size() - 1;
+
+        boolean canDown = (i < 3);
+        Button_Classic downBtn = new Button_Classic("v", -1, col2X + prioNameW + CFG.PADD + upDownW + CFG.PADD, rowY, upDownW, btnH, canDown);
+        menuElements.add(downBtn);
+        this.idPrioDown[i] = menuElements.size() - 1;
     }
 
     @Override
@@ -676,23 +671,23 @@ public class Menu_AutoDevelop extends Menu {
 
     @Override
     public void draw(SpriteBatch oSB, int iTranslateX, int iTranslateY, boolean sliderMenuIsActive) {
-        // 1. Повноекранне напівпрозоре затемнення з ефектом фокусу на модальному вікні
+        // 1. Повноекранне напівпрозоре затемнення
         oSB.setColor(new Color(0.02f, 0.03f, 0.05f, 0.88f));
         IMGManager.getIMG(Images.pix255).draw(oSB, 0, 0, CFG.GAMEWIDTH, CFG.GAMEHEIGHT);
 
-        // 2. Основна карточка модального вікна
+        // 2. Основна карточка модального вікна (точно за розрахованими межами)
         int pad = CFG.PADD * 2;
-        oSB.setColor(new Color(0.07f, 0.09f, 0.14f, 0.94f));
+        oSB.setColor(new Color(0.07f, 0.09f, 0.14f, 0.95f));
         IMGManager.getIMG(Images.pix255).draw(oSB, this.dialogStartX - pad, this.dialogStartY - pad, this.dialogWidth + pad * 2, this.dialogHeight + pad * 2);
 
-        // 3. Тонка рамка навколо діалогу (фірмовий стиль гри)
-        oSB.setColor(new Color(CFG.COLOR_FLAG_FRAME.r, CFG.COLOR_FLAG_FRAME.g, CFG.COLOR_FLAG_FRAME.b, 0.65f));
+        // 3. Тонка рамка навколо діалогу (фірмовий золотистий колір гри)
+        oSB.setColor(new Color(CFG.COLOR_FLAG_FRAME.r, CFG.COLOR_FLAG_FRAME.g, CFG.COLOR_FLAG_FRAME.b, 0.70f));
         IMGManager.getIMG(Images.pix255).draw(oSB, this.dialogStartX - pad, this.dialogStartY - pad, this.dialogWidth + pad * 2, 1);
         IMGManager.getIMG(Images.pix255).draw(oSB, this.dialogStartX - pad, this.dialogStartY + this.dialogHeight + pad - 1, this.dialogWidth + pad * 2, 1);
         IMGManager.getIMG(Images.pix255).draw(oSB, this.dialogStartX - pad, this.dialogStartY - pad, 1, this.dialogHeight + pad * 2);
         IMGManager.getIMG(Images.pix255).draw(oSB, this.dialogStartX + this.dialogWidth + pad - 1, this.dialogStartY - pad, 1, this.dialogHeight + pad * 2);
 
-        // 4. М'які підкладки під ліву та праву колонки
+        // 4. М'які підкладки під ліву та праву колонки (однакової висоти!)
         oSB.setColor(new Color(0.0f, 0.0f, 0.0f, 0.22f));
         IMGManager.getIMG(Images.pix255).draw(oSB, this.col1XPos - CFG.PADD, this.columnsStartY - CFG.PADD / 2, this.colWidth + CFG.PADD * 2, this.columnsHeight + CFG.PADD);
         IMGManager.getIMG(Images.pix255).draw(oSB, this.col2XPos - CFG.PADD, this.columnsStartY - CFG.PADD / 2, this.colWidth + CFG.PADD * 2, this.columnsHeight + CFG.PADD);
