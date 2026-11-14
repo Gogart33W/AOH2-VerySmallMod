@@ -131,15 +131,15 @@ public class Menu_InGame_AnnexVassal extends Menu {
         int numArmy = CFG.core.getCiv(vassalCivID).getNumberOfUnits();
 
         String line1 = isUkr
-                ? ("Держава: " + vassalName + "  •  Провінцій: " + numProvs)
-                : ("Civilization: " + vassalName + "  •  Provinces: " + numProvs);
+                ? ("Держава: " + vassalName + "  |  Провінцій: " + numProvs)
+                : ("Civilization: " + vassalName + "  |  Provinces: " + numProvs);
         TextStyle txt1 = new TextStyle(line1, -1, elemX, curY, elemW, textH);
         menuElements.add(txt1);
         curY += textH + CFG.PADD;
 
         String line2 = isUkr
-                ? ("Населення: " + CFG.getNumberWthSpaces("" + numPop) + "  •  Армія: " + CFG.getNumberWthSpaces("" + numArmy))
-                : ("Population: " + CFG.getNumberWthSpaces("" + numPop) + "  •  Army: " + CFG.getNumberWthSpaces("" + numArmy));
+                ? ("Населення: " + CFG.getNumberWthSpaces("" + numPop) + "  |  Армія: " + CFG.getNumberWthSpaces("" + numArmy))
+                : ("Population: " + CFG.getNumberWthSpaces("" + numPop) + "  |  Army: " + CFG.getNumberWthSpaces("" + numArmy));
         TextStyle txt2 = new TextStyle(line2, -1, elemX, curY, elemW, textH);
         menuElements.add(txt2);
         curY += textH + CFG.PADD * 2;
@@ -147,13 +147,13 @@ public class Menu_InGame_AnnexVassal extends Menu {
         // 4. Перевірка та відображення вимог анексії
         this.currentStatus = VassalManager.checkAnnexation(lordCivID, vassalCivID);
 
-        String reqTitle = isUkr ? "─── ВИМОГИ ДЛЯ ПРИЄДНАННЯ ───" : "─── ANNEXATION REQUIREMENTS ───";
+        String reqTitle = isUkr ? "--- ВИМОГИ ДЛЯ ПРИЄДНАННЯ ---" : "--- ANNEXATION REQUIREMENTS ---";
         TextStyle txtReq = new TextStyle(reqTitle, -1, elemX, curY, elemW, textH);
         menuElements.add(txtReq);
         curY += textH + CFG.PADD;
 
         // Стосунки
-        String relStr = (this.currentStatus.relationOk ? "✓ " : "✕ ") +
+        String relStr = (this.currentStatus.relationOk ? "[+] " : "[-] ") +
                 (isUkr ? "Стосунки з васалом: " : "Relations: ") +
                 CFG.getPrecision2(this.currentStatus.relation, 10) + " / +" + (int)this.currentStatus.reqRelation;
         TextStyle txtRel = new TextStyle(relStr, -1, elemX, curY, elemW, textH);
@@ -161,7 +161,7 @@ public class Menu_InGame_AnnexVassal extends Menu {
         curY += textH + CFG.PADD;
 
         // Термін васалітету
-        String yearsStr = (this.currentStatus.yearsOk ? "✓ " : "✕ ") +
+        String yearsStr = (this.currentStatus.yearsOk ? "[+] " : "[-] ") +
                 (isUkr ? "Термін васалітету: " : "Vassal duration: ") +
                 this.currentStatus.yearsAsVassal + " / " + this.currentStatus.reqYears + (isUkr ? " р. (" : " yrs (") +
                 this.currentStatus.turnsAsVassal + " / " + this.currentStatus.reqTurns + (isUkr ? " х.)" : " turns)");
@@ -170,7 +170,7 @@ public class Menu_InGame_AnnexVassal extends Menu {
         curY += textH + CFG.PADD;
 
         // Бажання свободи
-        String libStr = (this.currentStatus.libertyDesireOk ? "✓ " : "✕ ") +
+        String libStr = (this.currentStatus.libertyDesireOk ? "[+] " : "[-] ") +
                 (isUkr ? "Бажання свободи: " : "Liberty desire: ") +
                 CFG.getPrecision2(this.currentStatus.libertyDesire, 10) + "% / <" + (int)this.currentStatus.maxLibertyDesire + "%";
         TextStyle txtLib = new TextStyle(libStr, -1, elemX, curY, elemW, textH);
@@ -178,7 +178,7 @@ public class Menu_InGame_AnnexVassal extends Menu {
         curY += textH + CFG.PADD;
 
         // Стан миру
-        String peaceStr = (this.currentStatus.peaceOk ? "✓ " : "✕ ") +
+        String peaceStr = (this.currentStatus.peaceOk ? "[+] " : "[-] ") +
                 (isUkr ? "Стан миру: " : "Peace status: ") +
                 (this.currentStatus.peaceOk ? (isUkr ? "Мирний" : "Peace") : (isUkr ? "У стані війни" : "At War"));
         TextStyle txtPeace = new TextStyle(peaceStr, -1, elemX, curY, elemW, textH);
@@ -187,7 +187,7 @@ public class Menu_InGame_AnnexVassal extends Menu {
 
         // 5. Кнопки підтвердження та скасування
         int halfBtnW = (elemW - CFG.PADD * 2) / 2;
-        String confirmText = isUkr ? "✓ Приєднати васала" : "✓ Annex Vassal";
+        String confirmText = isUkr ? "Приєднати васала" : "Annex Vassal";
         Button_Classic confirmBtn = new Button_Classic(confirmText, -1, elemX, curY, halfBtnW, btnH, this.currentStatus.canAnnex) {
             @Override
             public boolean getIsClickable() {
@@ -197,7 +197,7 @@ public class Menu_InGame_AnnexVassal extends Menu {
         menuElements.add(confirmBtn);
         this.idConfirmBtn = menuElements.size() - 1;
 
-        String cancelText = isUkr ? "✕ Скасувати" : "✕ Cancel";
+        String cancelText = isUkr ? "Скасувати" : "Cancel";
         Button_Classic cancelBtn = new Button_Classic(cancelText, -1, elemX + halfBtnW + CFG.PADD * 2, curY, halfBtnW, btnH, true);
         menuElements.add(cancelBtn);
         this.idCancelBtn = menuElements.size() - 1;

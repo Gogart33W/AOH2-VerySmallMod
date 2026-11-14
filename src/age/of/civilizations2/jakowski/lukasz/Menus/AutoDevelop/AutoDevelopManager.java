@@ -17,9 +17,9 @@ import java.util.List;
  * AutoDevelopManager - комплексна автоматизація провінцій:
  * - Розвиток економіки
  * - Розвиток інфраструктури науки / технологій
- * - Проведення ярмарок для підвищення щастя
+ * - Проведення ярмарок для щастя
  * - Асиміляція провінцій для стабільності
- * - Гнучкі пріоритети та захисні резерви ресурсів
+ * - Пріоритети, резерви та повна діагностика
  */
 public class AutoDevelopManager {
     public static final int PRIO_ASSIMILATE = 0;
@@ -27,7 +27,7 @@ public class AutoDevelopManager {
     public static final int PRIO_ECONOMY = 2;
     public static final int PRIO_DEVELOPMENT = 3;
 
-    // Пріоритети виконання (порядок за замовчуванням: Асиміляція -> Ярмарки -> Економіка -> Дослідження)
+    // Пріоритети виконання (черга дій 1 -> 4)
     public static int[] priorities = new int[]{ PRIO_ASSIMILATE, PRIO_FESTIVAL, PRIO_ECONOMY, PRIO_DEVELOPMENT };
 
     // Головні перемикачі
@@ -39,7 +39,7 @@ public class AutoDevelopManager {
     public static boolean showNotifications = true;
 
     // Пороги та цілі
-    public static int targetEcoPercentage = 100; // цільова економіка: % від населення
+    public static int targetEcoPercentage = 100; // цільова економіка: % від населення (дефолт 100%)
     public static int targetHappiness = 80;      // проводити ярмарки, якщо щастя < X%
     public static int targetStability = 100;     // асимілювати, якщо стабільність < X%
 
@@ -56,13 +56,13 @@ public class AutoDevelopManager {
     public static String getPriorityName(int prio, boolean isUkr) {
         switch (prio) {
             case PRIO_ASSIMILATE:
-                return isUkr ? "Асиміляція" : "Assimilation";
+                return isUkr ? "Асиміляція (Стабільність)" : "Assimilation (Stability)";
             case PRIO_FESTIVAL:
-                return isUkr ? "Ярмарки" : "Festivals";
+                return isUkr ? "Ярмарки (Щастя)" : "Festivals (Happiness)";
             case PRIO_ECONOMY:
-                return isUkr ? "Економіка" : "Economy";
+                return isUkr ? "Економіка (% населення)" : "Economy (% of Pop)";
             case PRIO_DEVELOPMENT:
-                return isUkr ? "Дослідження" : "Research";
+                return isUkr ? "Дослідження (Рівень науки)" : "Research (Civ Tech Level)";
             default:
                 return "";
         }
@@ -89,7 +89,7 @@ public class AutoDevelopManager {
                     } else if (line.startsWith("development=")) {
                         autoInvestDevelopment = Boolean.parseBoolean(line.substring(12));
                     } else if (line.startsWith("targetEcoPerc=")) {
-                        targetEcoPercentage = Integer.parseInt(line.substring(14));
+                        targetEcoPercentage = Math.max(10, Integer.parseInt(line.substring(14)));
                     } else if (line.startsWith("targetHappiness=")) {
                         targetHappiness = Integer.parseInt(line.substring(16));
                     } else if (line.startsWith("targetStability=")) {
@@ -134,6 +134,78 @@ public class AutoDevelopManager {
             writer.close();
         } catch (Exception ignored) {
         }
+    }
+
+    // Діагностичні методи для підрахунку потреб у реальному часі
+    public static int getNeedAssimilateCount(int civID) {
+        if (CFG.core == null || CFG.core.getCiv(civID) == null) return 0;
+        int count = 0;
+        float maxStab = (float)targetStability / 100.0f;
+        int numOfProvs = CFG.core.getCiv(civID).getNumOfProvs();
+        for (int i = 0; i < numOfProvs; i++) {
+            int pID = CFG.core.getCiv(civID).getProvID(i);
+            if (pID >= 0 && !CFG.core.getProv(pID).getSeaProv() && CFG.core.getProv(pID).getWastelandLvl() < 0 && !CFG.core.getProv(pID).isOccupied()) {
+                if (CFG.core.getProv(pID).getProviStability() < maxStab && !CFG.core.getCiv(civID).isAssimilateOrganized(pID)) {
+                    count++;
+                }
+            }
+        }
+        return count;
+    }
+
+    public static int getNeedFestivalCount(int civID) {
+        if (CFG.core == null || CFG.core.getCiv(civID) == null) return 0;
+        int count = 0;
+        float maxHappi = (float)targetHappiness / 100.0f;
+        int numOfProvs = CFG.core.getCiv(civID).getNumOfProvs();
+        for (int i = 0; i < numOfProvs; i++) {
+            int pID = CFG.core.getCiv(civID).getProvID(i);
+            if (pID >= 0 && !CFG.core.getProv(pID).getSeaProv() && CFG.core.getProv(pID).getWastelandLvl() < 0 && !CFG.core.getProv(pID).isOccupied()) {
+                if (CFG.core.getProv(pID).getHappi() < maxHappi && !CFG.core.getCiv(civID).isFestivalOrganized(pID)) {
+                    count++;
+                }
+            }
+        }
+        return count;
+    }
+
+    public static int getNeedEconomyCount(int civID) {
+        if (CFG.core == null || CFG.core.getCiv(civID) == null) return 0;
+        int count = 0;
+        int numOfProvs = CFG.core.getCiv(civID).getNumOfProvs();
+        for (int i = 0; i < numOfProvs; i++) {
+            int pID = CFG.core.getCiv(civID).getProvID(i);
+            if (pID >= 0 && !CFG.core.getProv(pID).getSeaProv() && CFG.core.getProv(pID).getWastelandLvl() < 0 && !CFG.core.getProv(pID).isOccupied()) {
+                if (!CFG.core.getCiv(civID).isInvestOrganized(pID)) {
+                    int pop = CFG.core.getProv(pID).getPop().getPops();
+                    int targetEco = (int)Math.max(1L, ((long)pop * targetEcoPercentage) / 100L);
+                    int curEco = CFG.core.getProv(pID).getEco() + CFG.core.getCiv(civID).isInvestOrganized_EconomyLeft(pID);
+                    if (curEco < targetEco) {
+                        count++;
+                    }
+                }
+            }
+        }
+        return count;
+    }
+
+    public static int getNeedDevelopmentCount(int civID) {
+        if (CFG.core == null || CFG.core.getCiv(civID) == null) return 0;
+        int count = 0;
+        float techLvl = CFG.core.getCiv(civID).getTechLevel();
+        int numOfProvs = CFG.core.getCiv(civID).getNumOfProvs();
+        for (int i = 0; i < numOfProvs; i++) {
+            int pID = CFG.core.getCiv(civID).getProvID(i);
+            if (pID >= 0 && !CFG.core.getProv(pID).getSeaProv() && CFG.core.getProv(pID).getWastelandLvl() < 0 && !CFG.core.getProv(pID).isOccupied()) {
+                if (!CFG.core.getCiv(civID).isInvestOrganized_Devel(pID)) {
+                    float curDev = CFG.core.getProv(pID).getDeveLvl() + CFG.core.getCiv(civID).isInvestOrganized_EconomyLeft_Development(pID);
+                    if (curDev < techLvl) {
+                        count++;
+                    }
+                }
+            }
+        }
+        return count;
     }
 
     public static int runAutoDevelopTurn() {
@@ -395,53 +467,60 @@ public class AutoDevelopManager {
             int totalActions = countAssimilate + countFestival + countEconomy + countDev;
 
             // Оновлюємо інтерфейс верхньої панелі та інформації про провінцію
-            if (totalActions > 0 || !isTurnAuto) {
-                try {
-                    if (CFG.menus != null) {
-                        CFG.menus.updateInGameTopAll(civID);
-                    }
-                    if (CFG.gameAction != null) {
-                        CFG.gameAction.updateInGame_ProvinceInfo();
-                    }
-                } catch (Exception ignored) {
+            try {
+                if (CFG.menus != null) {
+                    CFG.menus.updateInGameTopAll(civID);
                 }
+                if (CFG.gameAction != null) {
+                    CFG.gameAction.updateInGame_ProvinceInfo();
+                }
+            } catch (Exception ignored) {
             }
 
             // Сповіщення про виконані дії
-            if (totalActions > 0 && showNotifications) {
+            if (showNotifications) {
                 boolean isUkr = CFG.lang.get("LANGUAGENAME").equalsIgnoreCase("Українська");
-                float spentMove = Math.max(0.0f, (float)(startMovePoints - CFG.core.getCiv(civID).getMovemPoints()) / 10.0f);
-                float spentDiplo = Math.max(0.0f, (float)(startDiploPoints - CFG.core.getCiv(civID).getDiploPoints()) / 10.0f);
-                long spentGold = Math.max(0L, startGold - CFG.core.getCiv(civID).getGold());
+                if (totalActions > 0) {
+                    float spentMove = Math.max(0.0f, (float)(startMovePoints - CFG.core.getCiv(civID).getMovemPoints()) / 10.0f);
+                    float spentDiplo = Math.max(0.0f, (float)(startDiploPoints - CFG.core.getCiv(civID).getDiploPoints()) / 10.0f);
+                    long spentGold = Math.max(0L, startGold - CFG.core.getCiv(civID).getGold());
 
-                StringBuilder sb = new StringBuilder();
-                if (isUkr) {
-                    sb.append("Авто-розвиток: ").append(totalActions).append(" дій");
-                    sb.append(" (");
-                    boolean first = true;
-                    if (countAssimilate > 0) { sb.append(countAssimilate).append(" асим."); first = false; }
-                    if (countFestival > 0) { if (!first) sb.append(", "); sb.append(countFestival).append(" ярм."); first = false; }
-                    if (countEconomy > 0) { if (!first) sb.append(", "); sb.append(countEconomy).append(" екон."); first = false; }
-                    if (countDev > 0) { if (!first) sb.append(", "); sb.append(countDev).append(" розв."); }
-                    sb.append(") | ");
-                    if (spentMove > 0) sb.append("-").append(CFG.getPrecision2(spentMove, 10)).append(" ходів ");
-                    if (spentDiplo > 0) sb.append("-").append(CFG.getPrecision2(spentDiplo, 10)).append(" дипл. ");
-                    if (spentGold > 0) sb.append("-").append(spentGold).append(" зол.");
-                } else {
-                    sb.append("Auto-Develop: ").append(totalActions).append(" actions");
-                    sb.append(" (");
-                    boolean first = true;
-                    if (countAssimilate > 0) { sb.append(countAssimilate).append(" assim."); first = false; }
-                    if (countFestival > 0) { if (!first) sb.append(", "); sb.append(countFestival).append(" fest."); first = false; }
-                    if (countEconomy > 0) { if (!first) sb.append(", "); sb.append(countEconomy).append(" eco."); first = false; }
-                    if (countDev > 0) { if (!first) sb.append(", "); sb.append(countDev).append(" dev."); }
-                    sb.append(") | ");
-                    if (spentMove > 0) sb.append("-").append(CFG.getPrecision2(spentMove, 10)).append(" mov. ");
-                    if (spentDiplo > 0) sb.append("-").append(CFG.getPrecision2(spentDiplo, 10)).append(" diplo ");
-                    if (spentGold > 0) sb.append("-").append(spentGold).append(" gold");
+                    StringBuilder sb = new StringBuilder();
+                    if (isUkr) {
+                        sb.append("Виконано ").append(totalActions).append(" дій");
+                        sb.append(" (");
+                        boolean first = true;
+                        if (countAssimilate > 0) { sb.append(countAssimilate).append(" асим."); first = false; }
+                        if (countFestival > 0) { if (!first) sb.append(", "); sb.append(countFestival).append(" ярм."); first = false; }
+                        if (countEconomy > 0) { if (!first) sb.append(", "); sb.append(countEconomy).append(" екон."); first = false; }
+                        if (countDev > 0) { if (!first) sb.append(", "); sb.append(countDev).append(" розв."); }
+                        sb.append(") | ");
+                        if (spentMove > 0) sb.append("-").append(CFG.getPrecision2(spentMove, 10)).append(" ходів ");
+                        if (spentDiplo > 0) sb.append("-").append(CFG.getPrecision2(spentDiplo, 10)).append(" дипл. ");
+                        if (spentGold > 0) sb.append("-").append(spentGold).append(" зол.");
+                    } else {
+                        sb.append("Done ").append(totalActions).append(" actions");
+                        sb.append(" (");
+                        boolean first = true;
+                        if (countAssimilate > 0) { sb.append(countAssimilate).append(" assim."); first = false; }
+                        if (countFestival > 0) { if (!first) sb.append(", "); sb.append(countFestival).append(" fest."); first = false; }
+                        if (countEconomy > 0) { if (!first) sb.append(", "); sb.append(countEconomy).append(" eco."); first = false; }
+                        if (countDev > 0) { if (!first) sb.append(", "); sb.append(countDev).append(" dev."); }
+                        sb.append(") | ");
+                        if (spentMove > 0) sb.append("-").append(CFG.getPrecision2(spentMove, 10)).append(" mov. ");
+                        if (spentDiplo > 0) sb.append("-").append(CFG.getPrecision2(spentDiplo, 10)).append(" diplo ");
+                        if (spentGold > 0) sb.append("-").append(spentGold).append(" gold");
+                    }
+                    CFG.toastM.addM(sb.toString(), CFG.COLOR_POSITIVE);
+                    CFG.toastM.setTimeInView(4000);
+                } else if (!isTurnAuto) {
+                    // Якщо користувач натиснув вручну і дій 0 — пояснюємо причину
+                    String reason = isUkr
+                            ? "Всі провінції вже відповідають цілям (100% стаб., щастя та екон.), або увімкнено резерв ресурсів"
+                            : "All provinces already meet targets, or resource safety reserve is active";
+                    CFG.toastM.addM(reason, CFG.COLOR_GOLD);
+                    CFG.toastM.setTimeInView(3500);
                 }
-                CFG.toastM.addM(sb.toString(), CFG.COLOR_POSITIVE);
-                CFG.toastM.setTimeInView(4000);
             }
 
             return totalActions;

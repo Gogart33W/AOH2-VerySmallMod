@@ -300,29 +300,29 @@ public class VassalManager {
             StringBuilder sb = new StringBuilder();
             if (isUkr) {
                 sb.append("Вимоги для мирного приєднання:\n");
-                sb.append(relationOk ? "✓ " : "✕ ")
+                sb.append(relationOk ? "[+] " : "[-] ")
                   .append("Стосунки: ").append(CFG.getPrecision2(relation, 10))
                   .append(" / +").append((int)reqRelation).append("\n");
-                sb.append(yearsOk ? "✓ " : "✕ ")
+                sb.append(yearsOk ? "[+] " : "[-] ")
                   .append("Термін васалітету: ").append(yearsAsVassal)
                   .append(" / ").append(reqYears).append(" р. (").append(turnsAsVassal).append(" / ").append(reqTurns).append(" х.)\n");
-                sb.append(libertyDesireOk ? "✓ " : "✕ ")
+                sb.append(libertyDesireOk ? "[+] " : "[-] ")
                   .append("Бажання свободи: ").append(CFG.getPrecision2(libertyDesire, 10))
                   .append("% / <").append((int)maxLibertyDesire).append("%\n");
-                sb.append(peaceOk ? "✓ " : "✕ ")
+                sb.append(peaceOk ? "[+] " : "[-] ")
                   .append("Стан миру: ").append(peaceOk ? "Мир" : "Війна");
             } else {
                 sb.append("Peaceful annexation requirements:\n");
-                sb.append(relationOk ? "✓ " : "✕ ")
+                sb.append(relationOk ? "[+] " : "[-] ")
                   .append("Relations: ").append(CFG.getPrecision2(relation, 10))
                   .append(" / +").append((int)reqRelation).append("\n");
-                sb.append(yearsOk ? "✓ " : "✕ ")
+                sb.append(yearsOk ? "[+] " : "[-] ")
                   .append("Vassal duration: ").append(yearsAsVassal)
                   .append(" / ").append(reqYears).append(" yrs (").append(turnsAsVassal).append(" / ").append(reqTurns).append(" turns)\n");
-                sb.append(libertyDesireOk ? "✓ " : "✕ ")
+                sb.append(libertyDesireOk ? "[+] " : "[-] ")
                   .append("Liberty desire: ").append(CFG.getPrecision2(libertyDesire, 10))
                   .append("% / <").append((int)maxLibertyDesire).append("%\n");
-                sb.append(peaceOk ? "✓ " : "✕ ")
+                sb.append(peaceOk ? "[+] " : "[-] ")
                   .append("Peace status: ").append(peaceOk ? "Peace" : "At War");
             }
             return sb.toString();

@@ -186,7 +186,7 @@ extends Menu {
         }
         if (CFG.getActiveCivInfoId() == CFG.core.getPlayer(CFG.PLAYER_TURN_ID).getCivId()) {
             boolean isUkr = CFG.lang.get("LANGUAGENAME").equalsIgnoreCase("Українська");
-            String autoTitle = isUkr ? "⚡ Автоматизація провінцій" : "⚡ Province Automation";
+            String autoTitle = isUkr ? "Автоматизація провінцій" : "Province Automation";
             menuElems.add(new Button_DiplomacyAction(Images.economy, autoTitle, 0, 0, nPosY, menuW - 2, tempElemH, true) {
                 @Override
                 public void drawMEH2(SpriteBatch oSB, int iTranslateX, int iTranslateY, boolean isActive) {
@@ -1970,25 +1970,25 @@ extends Menu {
                     nData.clear();
 
                     nData.add(new age.of.civilizations2.jakowski.lukasz.MenuE_HoverP.ME_Hover_2Type_Text(
-                        (st.relationOk ? "✓ " : "✕ ") + (isUkr ? "Стосунки: " : "Relations: ") + CFG.getPrecision2(st.relation, 10) + " / +50",
+                        (st.relationOk ? "[+] " : "[-] ") + (isUkr ? "Стосунки: " : "Relations: ") + CFG.getPrecision2(st.relation, 10) + " / +50",
                         st.relationOk ? CFG.COLOR_POSITIVE : CFG.COLOR_NEGATIVE_2));
                     nElements.add(new MEHover_2E(nData));
                     nData.clear();
 
                     nData.add(new age.of.civilizations2.jakowski.lukasz.MenuE_HoverP.ME_Hover_2Type_Text(
-                        (st.yearsOk ? "✓ " : "✕ ") + (isUkr ? "Васалітет: " : "Duration: ") + st.yearsAsVassal + " / 5 " + (isUkr ? "р. (" : "yrs (") + st.turnsAsVassal + (isUkr ? "/50 х.)" : "/50 t.)"),
+                        (st.yearsOk ? "[+] " : "[-] ") + (isUkr ? "Васалітет: " : "Duration: ") + st.yearsAsVassal + " / 5 " + (isUkr ? "р. (" : "yrs (") + st.turnsAsVassal + (isUkr ? "/50 х.)" : "/50 t.)"),
                         st.yearsOk ? CFG.COLOR_POSITIVE : CFG.COLOR_NEGATIVE_2));
                     nElements.add(new MEHover_2E(nData));
                     nData.clear();
 
                     nData.add(new age.of.civilizations2.jakowski.lukasz.MenuE_HoverP.ME_Hover_2Type_Text(
-                        (st.libertyDesireOk ? "✓ " : "✕ ") + (isUkr ? "Бажання свободи: " : "Liberty: ") + CFG.getPrecision2(st.libertyDesire, 10) + "% / <50%",
+                        (st.libertyDesireOk ? "[+] " : "[-] ") + (isUkr ? "Бажання свободи: " : "Liberty: ") + CFG.getPrecision2(st.libertyDesire, 10) + "% / <50%",
                         st.libertyDesireOk ? CFG.COLOR_POSITIVE : CFG.COLOR_NEGATIVE_2));
                     nElements.add(new MEHover_2E(nData));
                     nData.clear();
 
                     nData.add(new age.of.civilizations2.jakowski.lukasz.MenuE_HoverP.ME_Hover_2Type_Text(
-                        (st.peaceOk ? "✓ " : "✕ ") + (isUkr ? "Стан: " : "Status: ") + (st.peaceOk ? (isUkr ? "Мир" : "Peace") : (isUkr ? "Війна" : "At War")),
+                        (st.peaceOk ? "[+] " : "[-] ") + (isUkr ? "Стан: " : "Status: ") + (st.peaceOk ? (isUkr ? "Мир" : "Peace") : (isUkr ? "Війна" : "At War")),
                         st.peaceOk ? CFG.COLOR_POSITIVE : CFG.COLOR_NEGATIVE_2));
                     nElements.add(new MEHover_2E(nData));
                     nData.clear();

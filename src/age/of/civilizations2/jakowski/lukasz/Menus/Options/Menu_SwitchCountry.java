@@ -101,7 +101,7 @@ public class Menu_SwitchCountry extends Menu {
         curY += titleH + CFG.PADD * 2;
 
         // 2. Головна кнопка закриття меню зверху
-        String closeTextTop = isUkr ? "✕ Повернутися до гри (Закрити)" : "✕ Return to Game (Close)";
+        String closeTextTop = isUkr ? "Повернутися до гри (Закрити)" : "Return to Game (Close)";
         Button_Classic closeBtnTop = new Button_Classic(closeTextTop, -1, btnX, curY, btnW, btnH, true);
         menuElements.add(closeBtnTop);
         this.idCloseBtnTop = menuElements.size() - 1;
@@ -113,8 +113,8 @@ public class Menu_SwitchCountry extends Menu {
         int searchBtnW = hasFilter ? (btnW - clearBtnW - CFG.PADD) : btnW;
 
         String searchLabel = hasFilter 
-                ? ((isUkr ? "🔍 Фільтр: \"" : "🔍 Filter: \"") + searchQuery + "\"")
-                : (isUkr ? "🔍 Пошук держави... (Натисніть тут)" : "🔍 Search Civilization... (Click here)");
+                ? ((isUkr ? "> Фільтр: \"" : "> Filter: \"") + searchQuery + "\"")
+                : (isUkr ? "> Пошук держави... (Натисніть тут)" : "> Search Civilization... (Click here)");
 
         Button_Classic_Classic_Search searchBtn = new Button_Classic_Classic_Search(
                 searchLabel,
@@ -131,7 +131,7 @@ public class Menu_SwitchCountry extends Menu {
         this.idClearSearchBtn = -1;
         if (hasFilter) {
             Button_Classic clearBtn = new Button_Classic(
-                    isUkr ? "✕ Скинути" : "✕ Clear",
+                    isUkr ? "[X] Скинути" : "[X] Clear",
                     -1,
                     btnX + searchBtnW + CFG.PADD,
                     curY,
@@ -154,7 +154,7 @@ public class Menu_SwitchCountry extends Menu {
                     && CFG.core.getCiv(provCiv).getNumOfProvs() > 0) {
                 this.activeProvCivID = provCiv;
                 String provCivName = CFG.core.getCiv(provCiv).getCivName();
-                String shortcutText = (isUkr ? "⚡ Обрана на карті провінція: " : "⚡ Selected province: ") + provCivName;
+                String shortcutText = (isUkr ? "> Обрана на карті провінція: " : "> Selected province: ") + provCivName;
                 Button_Classic_CivilizationAndFlag provBtn = new Button_Classic_CivilizationAndFlag(
                         provCiv,
                         CFG.CIV_FLAG_WIDTH + CFG.PADD * 3,
@@ -217,7 +217,7 @@ public class Menu_SwitchCountry extends Menu {
             int provCount = CFG.core.getCiv(civID).getNumOfProvs();
             boolean isCurrent = (civID == curPlayerCiv);
 
-            String label = (isCurrent ? (isUkr ? "★ [ВАША ПОТОЧНА КРАЇНА] " : "★ [CURRENT] ") : "")
+            String label = (isCurrent ? (isUkr ? "[ПОТОЧНА КРАЇНА] " : "[CURRENT] ") : "")
                     + civName + " (" + provCount + (isUkr ? " пров.)" : " prov.)");
 
             Button_Classic_CivilizationAndFlag civBtn = new Button_Classic_CivilizationAndFlag(
@@ -237,7 +237,7 @@ public class Menu_SwitchCountry extends Menu {
         }
 
         // 6. Нижня кнопка закриття
-        String closeTextBottom = isUkr ? "✕ Повернутися до гри (Закрити)" : "✕ Return to Game (Close)";
+        String closeTextBottom = isUkr ? "Повернутися до гри (Закрити)" : "Return to Game (Close)";
         Button_Classic closeBtnBottom = new Button_Classic(closeTextBottom, -1, btnX, curY, btnW, btnH, true);
         menuElements.add(closeBtnBottom);
         this.idCloseBtnBottom = menuElements.size() - 1;

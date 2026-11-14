@@ -8,6 +8,7 @@ import age.of.civilizations2.jakowski.lukasz.Civilization;
 import age.of.civilizations2.jakowski.lukasz.IMGManager;
 import age.of.civilizations2.jakowski.lukasz.Images;
 import age.of.civilizations2.jakowski.lukasz.Menu;
+import age.of.civilizations2.jakowski.lukasz.SFXManager;
 import age.of.civilizations2.jakowski.lukasz.TextB.Texts.TextTitleStyle;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
@@ -15,17 +16,17 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Menu_AutoDevelop - сучасне професійне вікно налаштування та запуску автоматичного розвитку держави.
+ * Menu_AutoDevelop - професійне повноекранне вікно налаштування та запуску автоматичного розвитку держави.
  */
 public class Menu_AutoDevelop extends Menu {
     private static int autoDevelopMenuID = -1;
     private static Menu_AutoDevelop instance = null;
 
-    // IDs of UI elements
+    // Кнопки закриття та майстер-тумблер
     private int idCloseTop = -1;
     private int idToggleMaster = -1;
 
-    // Priorities
+    // Пріоритети
     private int[] idPrioRow = new int[4];
     private int[] idPrioUp = new int[4];
     private int[] idPrioDown = new int[4];
@@ -33,7 +34,7 @@ public class Menu_AutoDevelop extends Menu {
     private int idPrioPresetEconomy = -1;
     private int idPrioPresetStability = -1;
 
-    // Reserves
+    // Резерви
     private int idResMove0 = -1;
     private int idResMove2 = -1;
     private int idResMove4 = -1;
@@ -44,7 +45,7 @@ public class Menu_AutoDevelop extends Menu {
     private int idResGold5k = -1;
     private int idResGold10k = -1;
 
-    // Modules
+    // Модулі
     private int idToggleAssimilate = -1;
     private int idStab90 = -1;
     private int idStab95 = -1;
@@ -70,7 +71,7 @@ public class Menu_AutoDevelop extends Menu {
     private int idToggleDevelopment = -1;
     private int idToggleNotifications = -1;
 
-    // Actions
+    // Дії
     private int idRunNow = -1;
     private int idCloseBottom = -1;
     private int idCatchAll = -1;
@@ -107,7 +108,7 @@ public class Menu_AutoDevelop extends Menu {
 
         boolean isUkr = CFG.lang.get("LANGUAGENAME").equalsIgnoreCase("Українська");
 
-        int menuW = Math.min((int)(CFG.CIV_INFO_MENU_WIDTH * 2.5f), CFG.GAMEWIDTH - CFG.PADD * 4);
+        int menuW = Math.min((int)(CFG.CIV_INFO_MENU_WIDTH * 2.3f), CFG.GAMEWIDTH - CFG.PADD * 4);
         int startX = (CFG.GAMEWIDTH - menuW) / 2;
         int btnH = Math.max(CFG.BUTTON_H * 7 / 10, CFG.TEXT_HEIGHT_DEFAULT + CFG.PADD * 2);
         int smallBtnH = Math.max(CFG.BUTTON_H * 3 / 5, CFG.TEXT_HEIGHT_DEFAULT + CFG.PADD);
@@ -125,12 +126,12 @@ public class Menu_AutoDevelop extends Menu {
         TextTitleStyle titleElem = new TextTitleStyle(titleText, -1, startX, curY, menuW - closeBtnW - CFG.PADD, titleH);
         menuElements.add(titleElem);
 
-        Button_Classic closeTopBtn = new Button_Classic("✕ " + (isUkr ? "Закрити" : "Close"), -1, startX + menuW - closeBtnW, curY, closeBtnW, titleH, true);
+        Button_Classic closeTopBtn = new Button_Classic(isUkr ? "Закрити" : "Close", -1, startX + menuW - closeBtnW, curY, closeBtnW, titleH, true);
         menuElements.add(closeTopBtn);
         this.idCloseTop = menuElements.size() - 1;
         curY += titleH + CFG.PADD;
 
-        // 2. Рядок статистики гравця (поточні ресурси)
+        // 2. Отримуємо дані гравця
         int playerCivID = -1;
         try {
             if (CFG.core != null && CFG.core.getPlayer(CFG.PLAYER_TURN_ID) != null) {
@@ -139,21 +140,51 @@ public class Menu_AutoDevelop extends Menu {
         } catch (Exception ignored) {
         }
 
-        String statsText;
-        if (playerCivID > 0 && CFG.core.getCiv(playerCivID) != null) {
-            Civilization pCiv = CFG.core.getCiv(playerCivID);
-            float movPts = (float)pCiv.getMovemPoints() / 10.0f;
-            float dipPts = (float)pCiv.getDiploPoints() / 10.0f;
-            long gold = pCiv.getGold();
-            int provs = pCiv.getNumOfProvs();
-            statsText = isUkr
-                    ? ("Держава: " + pCiv.getCivName() + "  |  Очки ходів: " + CFG.getPrecision2(movPts, 10) + "  |  Дипломатія: " + CFG.getPrecision2(dipPts, 10) + "  |  Золото: " + gold + "  |  Провінцій: " + provs)
-                    : ("Nation: " + pCiv.getCivName() + "  |  Movement: " + CFG.getPrecision2(movPts, 10) + "  |  Diplo: " + CFG.getPrecision2(dipPts, 10) + "  |  Gold: " + gold + "  |  Provinces: " + provs);
+        Civilization pCiv = (playerCivID > 0) ? CFG.core.getCiv(playerCivID) : null;
+
+        // 3. Рядок назви держави
+        String civLineText = (pCiv != null)
+                ? (isUkr ? ("Держава: " + pCiv.getCivName() + " (" + pCiv.getNumOfProvs() + " провінцій)")
+                         : ("Civilization: " + pCiv.getCivName() + " (" + pCiv.getNumOfProvs() + " provinces)"))
+                : (isUkr ? "Керування розвитком імперії" : "Empire development management");
+        Button_Classic civLine = new Button_Classic(civLineText, -1, startX, curY, menuW, smallBtnH, false);
+        menuElements.add(civLine);
+        curY += smallBtnH + CFG.PADD;
+
+        // 4. Три окремі плашки ресурсів (щоб ніколи не обрізався текст)
+        int badgeW = (menuW - CFG.PADD * 2) / 3;
+        float movPts = (pCiv != null) ? (float)pCiv.getMovemPoints() / 10.0f : 0.0f;
+        float dipPts = (pCiv != null) ? (float)pCiv.getDiploPoints() / 10.0f : 0.0f;
+        long gold = (pCiv != null) ? pCiv.getGold() : 0L;
+
+        String bMov = isUkr ? ("Ходи: " + CFG.getPrecision2(movPts, 10)) : ("Moves: " + CFG.getPrecision2(movPts, 10));
+        String bDip = isUkr ? ("Дипломатія: " + CFG.getPrecision2(dipPts, 10)) : ("Diplo: " + CFG.getPrecision2(dipPts, 10));
+        String bGld = isUkr ? ("Золото: " + CFG.getNumberWthSpaces("" + gold)) : ("Gold: " + CFG.getNumberWthSpaces("" + gold));
+
+        menuElements.add(new Button_Classic(bMov, -1, startX, curY, badgeW, smallBtnH, false));
+        menuElements.add(new Button_Classic(bDip, -1, startX + badgeW + CFG.PADD, curY, badgeW, smallBtnH, false));
+        menuElements.add(new Button_Classic(bGld, -1, startX + (badgeW + CFG.PADD) * 2, curY, badgeW, smallBtnH, false));
+        curY += smallBtnH + CFG.PADD;
+
+        // 5. Рядок живої діагностики потреб провінцій
+        int needAssi = (playerCivID > 0) ? AutoDevelopManager.getNeedAssimilateCount(playerCivID) : 0;
+        int needFest = (playerCivID > 0) ? AutoDevelopManager.getNeedFestivalCount(playerCivID) : 0;
+        int needEco = (playerCivID > 0) ? AutoDevelopManager.getNeedEconomyCount(playerCivID) : 0;
+        int needDev = (playerCivID > 0) ? AutoDevelopManager.getNeedDevelopmentCount(playerCivID) : 0;
+        int totalNeed = needAssi + needFest + needEco + needDev;
+
+        String diagText;
+        if (totalNeed > 0) {
+            diagText = isUkr 
+                    ? ("Потребують дій: " + needAssi + " асим. | " + needFest + " ярмар. | " + needEco + " екон. | " + needDev + " науки")
+                    : ("Require action: " + needAssi + " assim. | " + needFest + " fest. | " + needEco + " eco. | " + needDev + " dev.");
         } else {
-            statsText = isUkr ? "Керування автоматичним розвитком імперії" : "Automatic empire development management";
+            diagText = isUkr 
+                    ? "Усі провінції в ідеальному стані! (Цілі розвитку повністю досягнуто)" 
+                    : "All provinces meet development targets perfectly!";
         }
-        Button_Classic statsBar = new Button_Classic(statsText, -1, startX, curY, menuW, smallBtnH, false);
-        menuElements.add(statsBar);
+        Button_Classic diagBar = new Button_Classic(diagText, -1, startX, curY, menuW, smallBtnH, false, totalNeed > 0);
+        menuElements.add(diagBar);
         curY += smallBtnH + CFG.PADD * 2;
 
         int columnsStartY = curY;
@@ -165,22 +196,22 @@ public class Menu_AutoDevelop extends Menu {
 
         // Головний перемикач
         String masterText = isUkr 
-                ? (AutoDevelopManager.autoDevelopEnabled ? "[✓] АВТО-УПРАВЛІННЯ: УВІМКНЕНО (ЩОХОДУ)" : "[  ] АВТО-УПРАВЛІННЯ: ВИМКНЕНО")
-                : (AutoDevelopManager.autoDevelopEnabled ? "[✓] AUTO-MANAGEMENT: ENABLED (EVERY TURN)" : "[  ] AUTO-MANAGEMENT: DISABLED");
+                ? (AutoDevelopManager.autoDevelopEnabled ? "[ВКЛ] АВТО-УПРАВЛІННЯ (ЩОХОДУ)" : "[ВИКЛ] АВТО-УПРАВЛІННЯ (ВИМКНЕНО)")
+                : (AutoDevelopManager.autoDevelopEnabled ? "[ON] AUTO-MANAGEMENT (EVERY TURN)" : "[OFF] AUTO-MANAGEMENT (DISABLED)");
         Button_Classic masterBtn = new Button_Classic(masterText, -1, col1X, leftY, colW, btnH, true, AutoDevelopManager.autoDevelopEnabled);
         menuElements.add(masterBtn);
         this.idToggleMaster = menuElements.size() - 1;
         leftY += btnH + CFG.PADD * 2;
 
         // Заголовок пріоритетів
-        String prioHeader = isUkr ? "--- ПРІОРИТЕТИ ВИКОНАННЯ (1 -> 4) ---" : "--- EXECUTION PRIORITIES (1 -> 4) ---";
+        String prioHeader = isUkr ? "--- ПОРЯДОК ПРІОРИТЕТІВ (1 -> 4) ---" : "--- PRIORITY ORDER (1 -> 4) ---";
         Button_Classic prioHeadElem = new Button_Classic(prioHeader, -1, col1X, leftY, colW, smallBtnH, false);
         menuElements.add(prioHeadElem);
         leftY += smallBtnH + CFG.PADD;
 
-        // 4 рядки пріоритетів з кнопками [▲] та [▼]
-        int upDownW = btnH * 9 / 10;
-        int prioNameW = colW - (upDownW + CFG.PADD) * 2;
+        // 4 рядки пріоритетів з текстовими кнопками [ВГОРУ] та [ВНИЗ]
+        int upBtnW = btnH * 11 / 10;
+        int prioNameW = colW - (upBtnW + CFG.PADD) * 2;
 
         for (int i = 0; i < 4; i++) {
             int prioType = AutoDevelopManager.priorities[i];
@@ -192,15 +223,17 @@ public class Menu_AutoDevelop extends Menu {
             menuElements.add(prioBtn);
             this.idPrioRow[i] = menuElements.size() - 1;
 
-            // Кнопка [▲]
+            // Кнопка [ВГОРУ]
             boolean canUp = (i > 0);
-            Button_Classic upBtn = new Button_Classic("▲", -1, col1X + prioNameW + CFG.PADD, leftY, upDownW, btnH, canUp);
+            String upText = isUkr ? "ВГОРУ" : "UP";
+            Button_Classic upBtn = new Button_Classic(upText, -1, col1X + prioNameW + CFG.PADD, leftY, upBtnW, btnH, canUp);
             menuElements.add(upBtn);
             this.idPrioUp[i] = menuElements.size() - 1;
 
-            // Кнопка [▼]
+            // Кнопка [ВНИЗ]
             boolean canDown = (i < 3);
-            Button_Classic downBtn = new Button_Classic("▼", -1, col1X + prioNameW + CFG.PADD + upDownW + CFG.PADD, leftY, upDownW, btnH, canDown);
+            String downText = isUkr ? "ВНИЗ" : "DOWN";
+            Button_Classic downBtn = new Button_Classic(downText, -1, col1X + prioNameW + CFG.PADD + upBtnW + CFG.PADD, leftY, upBtnW, btnH, canDown);
             menuElements.add(downBtn);
             this.idPrioDown[i] = menuElements.size() - 1;
 
@@ -209,21 +242,25 @@ public class Menu_AutoDevelop extends Menu {
 
         // Пресети пріоритетів
         int pPresetW = (colW - CFG.PADD * 2) / 3;
-        Button_Classic pBal = new Button_Classic(isUkr ? "Баланс" : "Balanced", -1, col1X, leftY, pPresetW, smallBtnH, true);
+        boolean isBal = (AutoDevelopManager.priorities[0] == AutoDevelopManager.PRIO_ASSIMILATE && AutoDevelopManager.priorities[1] == AutoDevelopManager.PRIO_FESTIVAL);
+        boolean isEco = (AutoDevelopManager.priorities[0] == AutoDevelopManager.PRIO_ECONOMY);
+        boolean isStab = (AutoDevelopManager.priorities[0] == AutoDevelopManager.PRIO_ASSIMILATE && AutoDevelopManager.priorities[2] == AutoDevelopManager.PRIO_DEVELOPMENT);
+
+        Button_Classic pBal = new Button_Classic(isUkr ? "Баланс" : "Balanced", -1, col1X, leftY, pPresetW, smallBtnH, true, isBal);
         menuElements.add(pBal);
         this.idPrioPresetBalanced = menuElements.size() - 1;
 
-        Button_Classic pEco = new Button_Classic(isUkr ? "Економіка" : "Economy", -1, col1X + pPresetW + CFG.PADD, leftY, pPresetW, smallBtnH, true);
+        Button_Classic pEco = new Button_Classic(isUkr ? "Економіка" : "Economy", -1, col1X + pPresetW + CFG.PADD, leftY, pPresetW, smallBtnH, true, isEco);
         menuElements.add(pEco);
         this.idPrioPresetEconomy = menuElements.size() - 1;
 
-        Button_Classic pStab = new Button_Classic(isUkr ? "Стабільність" : "Stability", -1, col1X + (pPresetW + CFG.PADD) * 2, leftY, pPresetW, smallBtnH, true);
+        Button_Classic pStab = new Button_Classic(isUkr ? "Стабільність" : "Stability", -1, col1X + (pPresetW + CFG.PADD) * 2, leftY, pPresetW, smallBtnH, true, isStab);
         menuElements.add(pStab);
         this.idPrioPresetStability = menuElements.size() - 1;
         leftY += smallBtnH + CFG.PADD * 2;
 
         // Заголовок резервів
-        String resHeader = isUkr ? "--- ЗАХИСНІ РЕЗЕРВИ РЕСУРСІВ ---" : "--- RESOURCE SAFETY RESERVES ---";
+        String resHeader = isUkr ? "--- ЗАХИСНІ РЕЗЕРВИ РЕСУРСІВ ---" : "--- SAFETY RESERVES ---";
         Button_Classic resHeadElem = new Button_Classic(resHeader, -1, col1X, leftY, colW, smallBtnH, false);
         menuElements.add(resHeadElem);
         leftY += smallBtnH + CFG.PADD;
@@ -253,8 +290,8 @@ public class Menu_AutoDevelop extends Menu {
         this.idResMove6 = menuElements.size() - 1;
         leftY += smallBtnH + CFG.PADD;
 
-        // Резерв скарбниці (золото)
-        String goldResText = isUkr ? ("Резерв скарбниці: " + AutoDevelopManager.minGoldReserve + " золота") : ("Treasury Reserve: " + AutoDevelopManager.minGoldReserve + " gold");
+        // Резерв золота
+        String goldResText = isUkr ? ("Резерв скарбниці: " + CFG.getNumberWthSpaces("" + AutoDevelopManager.minGoldReserve) + " золота") : ("Treasury Reserve: " + CFG.getNumberWthSpaces("" + AutoDevelopManager.minGoldReserve) + " gold");
         Button_Classic goldResLabel = new Button_Classic(goldResText, -1, col1X, leftY, colW, smallBtnH, false);
         menuElements.add(goldResLabel);
         leftY += smallBtnH + CFG.PADD;
@@ -289,8 +326,8 @@ public class Menu_AutoDevelop extends Menu {
 
         // Модуль 1: Асиміляція
         String assiText = isUkr 
-                ? (AutoDevelopManager.autoAssimilate ? "[✓] Асиміляція провінцій" : "[  ] Асиміляція провінцій")
-                : (AutoDevelopManager.autoAssimilate ? "[✓] Province Assimilation" : "[  ] Province Assimilation");
+                ? (AutoDevelopManager.autoAssimilate ? "[ВКЛ] Асиміляція провінцій" : "[ВИКЛ] Асиміляція провінцій")
+                : (AutoDevelopManager.autoAssimilate ? "[ON] Province Assimilation" : "[OFF] Province Assimilation");
         Button_Classic assiBtn = new Button_Classic(assiText, -1, col2X, rightY, colW, btnH, true, AutoDevelopManager.autoAssimilate);
         menuElements.add(assiBtn);
         this.idToggleAssimilate = menuElements.size() - 1;
@@ -305,15 +342,15 @@ public class Menu_AutoDevelop extends Menu {
         menuElements.add(stab95);
         this.idStab95 = menuElements.size() - 1;
 
-        Button_Classic stab100 = new Button_Classic(isUkr ? "< 100% стаб." : "< 100% stab.", -1, col2X + (s3W + CFG.PADD) * 2, rightY, s3W, smallBtnH, true, AutoDevelopManager.targetStability == 100);
+        Button_Classic stab100 = new Button_Classic(isUkr ? "100% стаб." : "100% stab.", -1, col2X + (s3W + CFG.PADD) * 2, rightY, s3W, smallBtnH, true, AutoDevelopManager.targetStability == 100);
         menuElements.add(stab100);
         this.idStab100 = menuElements.size() - 1;
         rightY += smallBtnH + CFG.PADD * 2;
 
         // Модуль 2: Ярмарки
         String festText = isUkr 
-                ? (AutoDevelopManager.autoFestival ? "[✓] Проведення ярмарок (щастя)" : "[  ] Проведення ярмарок (щастя)")
-                : (AutoDevelopManager.autoFestival ? "[✓] Organize Festivals (happiness)" : "[  ] Organize Festivals (happiness)");
+                ? (AutoDevelopManager.autoFestival ? "[ВКЛ] Проведення ярмарок (щастя)" : "[ВИКЛ] Проведення ярмарок (щастя)")
+                : (AutoDevelopManager.autoFestival ? "[ON] Organize Festivals (happiness)" : "[OFF] Organize Festivals (happiness)");
         Button_Classic festBtn = new Button_Classic(festText, -1, col2X, rightY, colW, btnH, true, AutoDevelopManager.autoFestival);
         menuElements.add(festBtn);
         this.idToggleFestival = menuElements.size() - 1;
@@ -334,8 +371,8 @@ public class Menu_AutoDevelop extends Menu {
 
         // Модуль 3: Економіка
         String ecoText = isUkr 
-                ? (AutoDevelopManager.autoInvestEconomy ? "[✓] Розвиток економіки" : "[  ] Розвиток економіки")
-                : (AutoDevelopManager.autoInvestEconomy ? "[✓] Economy Investments" : "[  ] Economy Investments");
+                ? (AutoDevelopManager.autoInvestEconomy ? "[ВКЛ] Розвиток економіки" : "[ВИКЛ] Розвиток економіки")
+                : (AutoDevelopManager.autoInvestEconomy ? "[ON] Economy Investments" : "[OFF] Economy Investments");
         Button_Classic ecoBtn = new Button_Classic(ecoText, -1, col2X, rightY, colW, btnH, true, AutoDevelopManager.autoInvestEconomy);
         menuElements.add(ecoBtn);
         this.idToggleEconomy = menuElements.size() - 1;
@@ -351,7 +388,7 @@ public class Menu_AutoDevelop extends Menu {
         this.idEcoPercLabel = menuElements.size() - 1;
         rightY += smallBtnH + CFG.PADD;
 
-        // Рядок кроків +/-
+        // Кроки +/-
         int bW4 = (colW - CFG.PADD * 3) / 4;
         Button_Classic btnM50 = new Button_Classic("-50%", -1, col2X, rightY, bW4, smallBtnH, true);
         menuElements.add(btnM50);
@@ -370,7 +407,7 @@ public class Menu_AutoDevelop extends Menu {
         this.idEcoP50 = menuElements.size() - 1;
         rightY += smallBtnH + CFG.PADD;
 
-        // Пресети економіки
+        // Пресети цільової економіки
         int bW5 = (colW - CFG.PADD * 4) / 5;
         Button_Classic p80 = new Button_Classic("80%", -1, col2X, rightY, bW5, smallBtnH, true, AutoDevelopManager.targetEcoPercentage == 80);
         menuElements.add(p80);
@@ -395,8 +432,8 @@ public class Menu_AutoDevelop extends Menu {
 
         // Модуль 4: Дослідження
         String devText = isUkr 
-                ? (AutoDevelopManager.autoInvestDevelopment ? "[✓] Дослідження (до рівня держави)" : "[  ] Дослідження (до рівня держави)")
-                : (AutoDevelopManager.autoInvestDevelopment ? "[✓] Research Dev (up to Civ Tech Level)" : "[  ] Research Dev (up to Civ Tech Level)");
+                ? (AutoDevelopManager.autoInvestDevelopment ? "[ВКЛ] Дослідження (до рівня держави)" : "[ВИКЛ] Дослідження (до рівня держави)")
+                : (AutoDevelopManager.autoInvestDevelopment ? "[ON] Research Dev (up to Civ Tech Level)" : "[OFF] Research Dev (up to Civ Tech Level)");
         Button_Classic devBtn = new Button_Classic(devText, -1, col2X, rightY, colW, btnH, true, AutoDevelopManager.autoInvestDevelopment);
         menuElements.add(devBtn);
         this.idToggleDevelopment = menuElements.size() - 1;
@@ -404,8 +441,8 @@ public class Menu_AutoDevelop extends Menu {
 
         // Сповіщення
         String notifText = isUkr 
-                ? (AutoDevelopManager.showNotifications ? "[✓] Сповіщення про виконані дії" : "[  ] Сповіщення про виконані дії")
-                : (AutoDevelopManager.showNotifications ? "[✓] Notifications on action complete" : "[  ] Notifications on action complete");
+                ? (AutoDevelopManager.showNotifications ? "[ВКЛ] Сповіщення про виконані дії" : "[ВИКЛ] Сповіщення про виконані дії")
+                : (AutoDevelopManager.showNotifications ? "[ON] Action Notifications" : "[OFF] Action Notifications");
         Button_Classic notifBtn = new Button_Classic(notifText, -1, col2X, rightY, colW, smallBtnH, true, AutoDevelopManager.showNotifications);
         menuElements.add(notifBtn);
         this.idToggleNotifications = menuElements.size() - 1;
@@ -417,13 +454,13 @@ public class Menu_AutoDevelop extends Menu {
         int bottomY = Math.max(leftY, rightY) + CFG.PADD * 2;
 
         int actionBtnH = btnH * 11 / 10;
-        String runText = isUkr ? "⚡ ЗАПУСТИТИ ЗАРАЗ (НА ПОТОЧНОМУ ХОДІ)" : "⚡ RUN AUTOMATION NOW (THIS TURN)";
+        String runText = isUkr ? "ЗАПУСТИТИ ЗАРАЗ (НА ПОТОЧНОМУ ХОДІ)" : "RUN AUTOMATION NOW (THIS TURN)";
         Button_Classic runBtn = new Button_Classic(runText, -1, startX, bottomY, menuW, actionBtnH, true);
         menuElements.add(runBtn);
         this.idRunNow = menuElements.size() - 1;
         bottomY += actionBtnH + CFG.PADD;
 
-        String closeTextBottom = isUkr ? "✕ Повернутися до гри" : "✕ Return to Game";
+        String closeTextBottom = isUkr ? "Повернутися до гри" : "Return to Game";
         Button_Classic closeBtnBottom = new Button_Classic(closeTextBottom, -1, startX, bottomY, menuW, btnH, true);
         menuElements.add(closeBtnBottom);
         this.idCloseBottom = menuElements.size() - 1;
@@ -470,7 +507,6 @@ public class Menu_AutoDevelop extends Menu {
                 return;
             }
             if (iID == this.idPrioRow[i]) {
-                // Клік по пріоритету циклічно міняє його на наступний
                 if (i < 3) {
                     int temp = AutoDevelopManager.priorities[i];
                     AutoDevelopManager.priorities[i] = AutoDevelopManager.priorities[i + 1];
@@ -713,13 +749,11 @@ public class Menu_AutoDevelop extends Menu {
             }
 
             int count = (playerCivID > 0) ? AutoDevelopManager.developForCiv(playerCivID, false) : 0;
-            if (count == 0) {
-                boolean isUkr = CFG.lang.get("LANGUAGENAME").equalsIgnoreCase("Українська");
-                String msg = isUkr 
-                        ? "Автоматизація: немає провінцій, які потребують дій, або недостатньо ресурсів/ходів" 
-                        : "Automation: no provinces requiring action, or not enough resources/moves";
-                CFG.toastM.addM(msg, CFG.COLOR_GOLD);
-                CFG.toastM.setTimeInView(3500);
+            if (count > 0) {
+                try {
+                    CFG.SFXManager.playSound(SFXManager.SFX_GOLD);
+                } catch (Exception ignored) {
+                }
             }
             this.rebuild();
             return;
@@ -742,7 +776,7 @@ public class Menu_AutoDevelop extends Menu {
 
     @Override
     public void draw(SpriteBatch oSB, int iTranslateX, int iTranslateY, boolean sliderMenuIsActive) {
-        // Повноекранне темне тло з легким блюром
+        // Повноекранне затемнення
         oSB.setColor(new Color(0.04f, 0.06f, 0.09f, 0.95f));
         IMGManager.getIMG(Images.pix255).draw(oSB, 0, 0, CFG.GAMEWIDTH, CFG.GAMEHEIGHT);
 
@@ -751,8 +785,8 @@ public class Menu_AutoDevelop extends Menu {
         IMGManager.getIMG(Images.gradient).draw(oSB, 0, 0, CFG.GAMEWIDTH, CFG.BUTTON_H * 2);
         IMGManager.getIMG(Images.gradient).draw(oSB, 0, CFG.GAMEHEIGHT - CFG.BUTTON_H * 2, CFG.GAMEWIDTH, CFG.BUTTON_H * 2, false, true);
 
-        // Центральна карточка вікна
-        int menuW = Math.min((int)(CFG.CIV_INFO_MENU_WIDTH * 2.5f), CFG.GAMEWIDTH - CFG.PADD * 4);
+        // Центральна карточка діалогу
+        int menuW = Math.min((int)(CFG.CIV_INFO_MENU_WIDTH * 2.3f), CFG.GAMEWIDTH - CFG.PADD * 4);
         int startX = (CFG.GAMEWIDTH - menuW) / 2;
         int colGap = CFG.PADD * 2;
         int colW = (menuW - colGap) / 2;
@@ -760,21 +794,20 @@ public class Menu_AutoDevelop extends Menu {
         int col2X = startX + colW + colGap;
 
         // Підкладка діалогу
-        oSB.setColor(new Color(0.08f, 0.11f, 0.16f, 0.85f));
+        oSB.setColor(new Color(0.08f, 0.11f, 0.16f, 0.88f));
         IMGManager.getIMG(Images.pix255).draw(oSB, startX - CFG.PADD, CFG.PADD, menuW + CFG.PADD * 2, CFG.GAMEHEIGHT - CFG.PADD * 2);
 
         // Рамка діалогу
-        oSB.setColor(new Color(CFG.COLOR_FLAG_FRAME.r, CFG.COLOR_FLAG_FRAME.g, CFG.COLOR_FLAG_FRAME.b, 0.55f));
+        oSB.setColor(new Color(CFG.COLOR_FLAG_FRAME.r, CFG.COLOR_FLAG_FRAME.g, CFG.COLOR_FLAG_FRAME.b, 0.6f));
         IMGManager.getIMG(Images.pix255).draw(oSB, startX - CFG.PADD, CFG.PADD, menuW + CFG.PADD * 2, 1);
         IMGManager.getIMG(Images.pix255).draw(oSB, startX - CFG.PADD, CFG.GAMEHEIGHT - CFG.PADD - 1, menuW + CFG.PADD * 2, 1);
         IMGManager.getIMG(Images.pix255).draw(oSB, startX - CFG.PADD, CFG.PADD, 1, CFG.GAMEHEIGHT - CFG.PADD * 2);
         IMGManager.getIMG(Images.pix255).draw(oSB, startX + menuW + CFG.PADD, CFG.PADD, 1, CFG.GAMEHEIGHT - CFG.PADD * 2);
 
-        // Підкладка під ліву колонку
-        oSB.setColor(new Color(0.0f, 0.0f, 0.0f, 0.25f));
-        IMGManager.getIMG(Images.pix255).draw(oSB, col1X - CFG.PADD / 2, CFG.BUTTON_H * 2, colW + CFG.PADD, CFG.GAMEHEIGHT - CFG.BUTTON_H * 5);
-        // Підкладка під праву колонку
-        IMGManager.getIMG(Images.pix255).draw(oSB, col2X - CFG.PADD / 2, CFG.BUTTON_H * 2, colW + CFG.PADD, CFG.GAMEHEIGHT - CFG.BUTTON_H * 5);
+        // Підкладки під ліву та праву колонки
+        oSB.setColor(new Color(0.0f, 0.0f, 0.0f, 0.28f));
+        IMGManager.getIMG(Images.pix255).draw(oSB, col1X - CFG.PADD / 2, CFG.BUTTON_H * 5 / 2, colW + CFG.PADD, CFG.GAMEHEIGHT - CFG.BUTTON_H * 5);
+        IMGManager.getIMG(Images.pix255).draw(oSB, col2X - CFG.PADD / 2, CFG.BUTTON_H * 5 / 2, colW + CFG.PADD, CFG.GAMEHEIGHT - CFG.BUTTON_H * 5);
 
         oSB.setColor(Color.WHITE);
 
