@@ -1,7 +1,6 @@
 package age.of.civilizations2.jakowski.lukasz.Menus.AutoDevelop;
 
 import age.of.civilizations2.jakowski.lukasz.Button.Button_Transparent;
-import age.of.civilizations2.jakowski.lukasz.Button.Classic.Button_Classic;
 import age.of.civilizations2.jakowski.lukasz.Button.MenuElemUI;
 import age.of.civilizations2.jakowski.lukasz.CFG;
 import age.of.civilizations2.jakowski.lukasz.Civilization;
@@ -75,6 +74,7 @@ public class Menu_AutoDevelop extends Menu {
 
     public Menu_AutoDevelop() {
         this.rebuild();
+        super.setVisibleM(false);
     }
 
     public static void open() {
@@ -298,22 +298,238 @@ public class Menu_AutoDevelop extends Menu {
         }
     }
 
-    /*
-     * ЗНАХІДКИ ДОСЛІДЖЕННЯ ДЕКОМПІЛЬОВАНОГО КОДУ (game.jar):
-     * 1. Button_Classic розширює ButtonM. Якщо передати boolean isClickable=false,
-     *    ButtonM малює підкладку з альфою 0.45f, а текст кольором COLOR_BUTTON_MENU_TEXT_NOT_CLICKABLE
-     *    (блідо-сірий). Тому Button_Classic(..., false) не можна використовувати для інфо-рядків.
-     * 2. Конструктор Button_Classic з параметром boolean checkboxState вмикає внутрішній чекбокс
-     *    (ButtonM$3), який МАЛЮЄ ЗЕЛЕНИЙ ГРАДІЄНТ при true і ЧЕРВОНИЙ ГРАДІЄНТ при false.
-     *    Конструктор БЕЗ checkboxState вимикає чекбокс (ButtonM$4), і градієнт ВЗАГАЛІ НЕ МАЛЮЄТЬСЯ
-     *    (кнопка залишається нейтральною темною). Тому червоний/зелений градієнт використовується
-     *    виключно для ON/OFF тумблерів та ОДНОГО вибраного елемента в групах.
-     * 3. Ширина тексту вимірюється через CFG.glyphLay.setText(CFG.fontMain.get(fontID), text) -> width.
-     *    Button_Classic не вміє автоскейлити або обрізати текст: якщо текст довший за ширину кнопки,
-     *    він просто малюється з центром у x + w/2 - textWidth/2 і вилазить на сусідні кнопки з обох боків.
-     *    Хелпер fitText(...) запобігає цьому шляхом бінарного скорочення тексту під реальну ширину.
+    /**
+     * DevButton - високоточна кастомна кнопка без артефактів нативного Button_Classic:
+     * 1. Точні межі малювання (жодного вилізання за межі [x, y, w, h]).
+     * 2. Точний хітбокс колізії (колізійна зона 1-в-1 збігається з візуальною кнопкою).
+     * 3. Жодного фонового розтягування Images.btnMenuH (який у грі захардкоджений на 68px).
+     * 4. Акуратні підсвічування при ховері та активному стані (ON/OFF, пресети, селектори).
      */
+    public static class DevButton extends MenuElemUI {
+        public enum ButtonType {
+            NORMAL,
+            TOGGLE,
+            MASTER,
+            PRESET,
+            SELECTOR,
+            ACTION
+        }
+
+        private String sText = "";
+        private int iTextWidth = 0;
+        private int iTextHeight = CFG.TEXT_HEIGHT_DEFAULT;
+        private int textPosition = -1;
+        private boolean isChecked = false;
+        private ButtonType btnType = ButtonType.NORMAL;
+
+        public DevButton(String sText, int textPosition, int iPosX, int iPosY, int iWidth, int iHeight, boolean isClickable) {
+            this(sText, textPosition, iPosX, iPosY, iWidth, iHeight, isClickable, false, ButtonType.NORMAL);
+        }
+
+        public DevButton(String sText, int textPosition, int iPosX, int iPosY, int iWidth, int iHeight, boolean isClickable, boolean isChecked) {
+            this(sText, textPosition, iPosX, iPosY, iWidth, iHeight, isClickable, isChecked, ButtonType.NORMAL);
+        }
+
+        public DevButton(String sText, int textPosition, int iPosX, int iPosY, int iWidth, int iHeight, boolean isClickable, boolean isChecked, ButtonType btnType) {
+            this.typeOfMenuElemUI = MenuElemUI.TypeOfMenuElemUI.BUTTON;
+            this.setPosX(iPosX);
+            this.setPosY(iPosY);
+            this.setWidthE(iWidth);
+            this.setHeightE(iHeight);
+            this.setClickable(isClickable);
+            this.setVisibleE(true);
+            this.textPosition = textPosition;
+            this.isChecked = isChecked;
+            this.btnType = (btnType != null) ? btnType : ButtonType.NORMAL;
+            this.setTextE(sText);
+        }
+
+        @Override
+        public void setTextE(String sText) {
+            this.sText = (sText != null) ? sText : "";
+            try {
+                if (this.sText.length() > 0 && CFG.glyphLay != null && CFG.fontMain != null && !CFG.fontMain.isEmpty() && this.fontID < CFG.fontMain.size() && CFG.fontMain.get(this.fontID) != null) {
+                    CFG.glyphLay.setText(CFG.fontMain.get(this.fontID), this.sText);
+                    this.iTextWidth = (int)CFG.glyphLay.width;
+                    this.iTextHeight = CFG.TEXT_HEIGHT_DEFAULT;
+                } else {
+                    this.iTextWidth = this.sText.length() * 10;
+                    this.iTextHeight = CFG.TEXT_HEIGHT_DEFAULT;
+                }
+            } catch (Exception ex) {
+                this.iTextWidth = this.sText.length() * 10;
+                this.iTextHeight = CFG.TEXT_HEIGHT_DEFAULT;
+            }
+        }
+
+        @Override
+        public String getTextE() {
+            return this.sText;
+        }
+
+        @Override
+        public int getTextWidthU() {
+            return this.iTextWidth;
+        }
+
+        @Override
+        public int getTextHeight() {
+            return this.iTextHeight;
+        }
+
+        @Override
+        public boolean getCheckboxSt() {
+            return this.isChecked;
+        }
+
+        @Override
+        public void setCheckboxSt(boolean checked) {
+            this.isChecked = checked;
+        }
+
+        @Override
+        public int getSFXElem() {
+            return SFXManager.SFX_CLICK2;
+        }
+
+        @Override
+        public void drawE(SpriteBatch oSB, int iTranslateX, int iTranslateY) {
+            this.drawE(oSB, iTranslateX, iTranslateY, false, false);
+        }
+
+        @Override
+        public void drawE(SpriteBatch oSB, int iTranslateX, int iTranslateY, boolean isActive, boolean scrollableY) {
+            int x = this.getPosXE() + iTranslateX;
+            int y = this.getPosY() + iTranslateY;
+            int w = this.getWidthE();
+            int h = this.getHeightE();
+            boolean clickable = this.getIsClickable();
+            boolean hovered = clickable && this.getIsHovered();
+
+            try {
+                // 1. ФОНОВЕ ЗАПОВНЕННЯ (строго в межах x, y, w, h)
+                Color fillCol;
+                if (!clickable) {
+                    fillCol = new Color(0.06f, 0.08f, 0.11f, 0.50f);
+                } else if (this.btnType == ButtonType.MASTER) {
+                    fillCol = this.isChecked 
+                            ? new Color(0.10f, 0.28f, 0.16f, 0.95f)
+                            : new Color(0.24f, 0.08f, 0.08f, 0.95f);
+                } else if (this.btnType == ButtonType.TOGGLE) {
+                    fillCol = this.isChecked
+                            ? new Color(0.10f, 0.22f, 0.14f, 0.90f)
+                            : new Color(0.10f, 0.13f, 0.18f, 0.85f);
+                } else if (this.btnType == ButtonType.ACTION) {
+                    fillCol = new Color(0.12f, 0.18f, 0.28f, 0.95f);
+                } else if (this.isChecked) {
+                    fillCol = new Color(0.16f, 0.26f, 0.42f, 0.95f);
+                } else {
+                    fillCol = new Color(0.10f, 0.13f, 0.18f, 0.85f);
+                }
+
+                oSB.setColor(fillCol);
+                IMGManager.getIMG(Images.pix255).draw(oSB, x, y, w, h);
+
+                // М'який градієнт верхньої половини для об'єму (native AoH2 стиль)
+                if (clickable && h > 6) {
+                    oSB.setColor(new Color(1.0f, 1.0f, 1.0f, 0.04f));
+                    IMGManager.getIMG(Images.gradient).draw(oSB, x, y, w, h / 2);
+                }
+
+                // 2. БІЧНІ / ВЕРХНІ ІНДИКАТОРИ СТАТУСУ
+                if (clickable) {
+                    if (this.btnType == ButtonType.TOGGLE) {
+                        Color barCol = this.isChecked 
+                                ? new Color(0.25f, 0.85f, 0.38f, 0.95f)
+                                : new Color(0.70f, 0.20f, 0.20f, 0.85f);
+                        oSB.setColor(barCol);
+                        IMGManager.getIMG(Images.pix255).draw(oSB, x, y, 4, h);
+                    } else if (this.btnType == ButtonType.MASTER) {
+                        Color barCol = this.isChecked 
+                                ? new Color(0.30f, 0.95f, 0.45f, 1.0f)
+                                : new Color(0.85f, 0.25f, 0.25f, 1.0f);
+                        oSB.setColor(barCol);
+                        IMGManager.getIMG(Images.pix255).draw(oSB, x, y, 5, h);
+                        IMGManager.getIMG(Images.pix255).draw(oSB, x + w - 5, y, 5, h);
+                    } else if (this.isChecked && (this.btnType == ButtonType.PRESET || this.btnType == ButtonType.SELECTOR)) {
+                        oSB.setColor(new Color(0.45f, 0.75f, 1.0f, 0.95f));
+                        IMGManager.getIMG(Images.pix255).draw(oSB, x, y, w, 2);
+                    }
+                }
+
+                // 3. ХОВЕР-ПІДСВІЧУВАННЯ (виключно в межах кнопки)
+                if (hovered) {
+                    oSB.setColor(new Color(1.0f, 1.0f, 1.0f, 0.12f));
+                    IMGManager.getIMG(Images.pix255).draw(oSB, x, y, w, h);
+                }
+
+                // 4. ТОЧНА 1-ПІКСЕЛЬНА РАМКА ПО ВЕРТИКАЛІ ТА ГОРИЗОНТАЛІ
+                Color bColor;
+                if (!clickable) {
+                    bColor = new Color(0.30f, 0.35f, 0.40f, 0.25f);
+                } else if (hovered) {
+                    bColor = new Color(CFG.COLOR_FLAG_FRAME.r, CFG.COLOR_FLAG_FRAME.g, CFG.COLOR_FLAG_FRAME.b, 0.95f);
+                } else if (this.btnType == ButtonType.MASTER) {
+                    bColor = this.isChecked
+                            ? new Color(0.28f, 0.85f, 0.40f, 0.85f)
+                            : new Color(0.75f, 0.22f, 0.22f, 0.85f);
+                } else if (this.btnType == ButtonType.TOGGLE && this.isChecked) {
+                    bColor = new Color(0.25f, 0.75f, 0.38f, 0.75f);
+                } else if (this.isChecked) {
+                    bColor = new Color(0.40f, 0.70f, 1.0f, 0.90f);
+                } else {
+                    bColor = new Color(CFG.COLOR_FLAG_FRAME.r, CFG.COLOR_FLAG_FRAME.g, CFG.COLOR_FLAG_FRAME.b, 0.40f);
+                }
+
+                oSB.setColor(bColor);
+                IMGManager.getIMG(Images.pix255).draw(oSB, x, y, w, 1);
+                IMGManager.getIMG(Images.pix255).draw(oSB, x, y + h - 1, w, 1);
+                IMGManager.getIMG(Images.pix255).draw(oSB, x, y, 1, h);
+                IMGManager.getIMG(Images.pix255).draw(oSB, x + w - 1, y, 1, h);
+
+                // 5. ВІДОБРАЖЕННЯ ТЕКСТУ З ТІННЮ
+                Color tColor;
+                if (!clickable) {
+                    tColor = new Color(0.50f, 0.53f, 0.58f, 0.50f);
+                } else if (hovered) {
+                    tColor = CFG.COLOR_BUTTON_MENU_TEXT_HOVERED;
+                } else if (this.btnType == ButtonType.MASTER) {
+                    tColor = this.isChecked
+                            ? new Color(0.70f, 1.0f, 0.75f, 1.0f)
+                            : new Color(1.0f, 0.75f, 0.75f, 1.0f);
+                } else if (this.btnType == ButtonType.TOGGLE) {
+                    tColor = this.isChecked
+                            ? new Color(0.80f, 0.98f, 0.85f, 1.0f)
+                            : new Color(0.72f, 0.75f, 0.80f, 0.90f);
+                } else if (this.isChecked) {
+                    tColor = new Color(0.85f, 0.95f, 1.0f, 1.0f);
+                } else {
+                    tColor = new Color(0.88f, 0.90f, 0.94f, 1.0f);
+                }
+
+                int textX;
+                if (this.textPosition >= 0) {
+                    textX = x + Math.max(CFG.PADD * 2, this.textPosition);
+                } else {
+                    textX = x + Math.max(CFG.PADD, (w - this.iTextWidth) / 2);
+                }
+                int textY = y + (h - this.iTextHeight) / 2;
+                Renderer.drawTextWithShadow(oSB, this.fontID, this.sText, textX, textY, tColor);
+
+            } finally {
+                oSB.setColor(Color.WHITE);
+                try {
+                    if (CFG.fontMain != null && this.fontID < CFG.fontMain.size() && CFG.fontMain.get(this.fontID) != null) {
+                        CFG.fontMain.get(this.fontID).setColor(Color.WHITE);
+                    }
+                } catch (Exception ignored) {
+                }
+            }
+        }
+    }
+
     public void rebuild() {
+        boolean wasVisible = this.getVisibleM();
         List<MenuElemUI> menuElements = new ArrayList<MenuElemUI>();
         boolean isUkr = (CFG.lang != null && CFG.lang.get("LANGUAGENAME") != null) 
                 ? CFG.lang.get("LANGUAGENAME").equalsIgnoreCase("Українська") 
@@ -392,7 +608,7 @@ public class Menu_AutoDevelop extends Menu {
         TextTitleStyle titleElem = new TextTitleStyle(fitText(rawTitle, titleAvailW - padText), -1, startX, curY, titleAvailW, titleH);
         menuElements.add(titleElem);
 
-        Button_Classic closeTopBtn = new Button_Classic(isUkr ? "Закрити" : "Close", -1, startX + menuW - closeBtnW, curY, closeBtnW, titleH, true);
+        DevButton closeTopBtn = new DevButton(isUkr ? "Закрити" : "Close", -1, startX + menuW - closeBtnW, curY, closeBtnW, titleH, true, false, DevButton.ButtonType.NORMAL);
         menuElements.add(closeTopBtn);
         this.idCloseTop = menuElements.size() - 1;
         curY += titleH + gapM;
@@ -465,7 +681,7 @@ public class Menu_AutoDevelop extends Menu {
         String masterText = isUkr 
                 ? (AutoDevelopManager.autoDevelopEnabled ? "[ВКЛ] АВТО-РОЗВИТОК УВІМКНЕНО (ПРАЦЮЄ ЩОХОДУ)" : "[ВИКЛ] АВТО-РОЗВИТОК ВИМКНЕНО")
                 : (AutoDevelopManager.autoDevelopEnabled ? "[ON] AUTO-DEVELOPMENT RUNS EVERY TURN" : "[OFF] AUTO-DEVELOPMENT DISABLED");
-        Button_Classic masterBtn = new Button_Classic(fitText(masterText, menuW - padText * 2), -1, startX, curY, menuW, masterBtnH, true, AutoDevelopManager.autoDevelopEnabled);
+        DevButton masterBtn = new DevButton(fitText(masterText, menuW - padText * 2), -1, startX, curY, menuW, masterBtnH, true, AutoDevelopManager.autoDevelopEnabled, DevButton.ButtonType.MASTER);
         menuElements.add(masterBtn);
         this.idToggleMaster = menuElements.size() - 1;
         curY += masterBtnH + gapL;
@@ -500,7 +716,7 @@ public class Menu_AutoDevelop extends Menu {
         String assiText = isUkr 
                 ? (AutoDevelopManager.autoAssimilate ? "[ВКЛ] Асиміляція (до 100% стабільності)" : "[ВИКЛ] Асиміляція (стабільність)")
                 : (AutoDevelopManager.autoAssimilate ? "[ON] Assimilation (to 100% stability)" : "[OFF] Assimilation");
-        Button_Classic assiBtn = new Button_Classic(fitText(assiText, colW - padText), -1, col1X, leftY, colW, btnH, true, AutoDevelopManager.autoAssimilate);
+        DevButton assiBtn = new DevButton(fitText(assiText, colW - padText), -1, col1X, leftY, colW, btnH, true, AutoDevelopManager.autoAssimilate, DevButton.ButtonType.TOGGLE);
         menuElements.add(assiBtn);
         this.idToggleAssimilate = menuElements.size() - 1;
         leftY += btnH + gapM;
@@ -512,7 +728,7 @@ public class Menu_AutoDevelop extends Menu {
         String festText = isUkr 
                 ? (AutoDevelopManager.autoFestival ? "[ВКЛ] Проведення ярмарок (щастя)" : "[ВИКЛ] Проведення ярмарок (щастя)")
                 : (AutoDevelopManager.autoFestival ? "[ON] Organize Festivals (happiness)" : "[OFF] Organize Festivals (happiness)");
-        Button_Classic festBtn = new Button_Classic(fitText(festText, colW - padText), -1, col1X, leftY, colW, btnH, true, AutoDevelopManager.autoFestival);
+        DevButton festBtn = new DevButton(fitText(festText, colW - padText), -1, col1X, leftY, colW, btnH, true, AutoDevelopManager.autoFestival, DevButton.ButtonType.TOGGLE);
         menuElements.add(festBtn);
         this.idToggleFestival = menuElements.size() - 1;
         leftY += btnH + gapM;
@@ -524,7 +740,7 @@ public class Menu_AutoDevelop extends Menu {
         String devText = isUkr 
                 ? (AutoDevelopManager.autoInvestDevelopment ? "[ВКЛ] Дослідження (до рівня науки)" : "[ВИКЛ] Дослідження (наука)")
                 : (AutoDevelopManager.autoInvestDevelopment ? "[ON] Research (to Civ Tech Level)" : "[OFF] Research Development");
-        Button_Classic devBtn = new Button_Classic(fitText(devText, colW - padText), -1, col1X, leftY, colW, btnH, true, AutoDevelopManager.autoInvestDevelopment);
+        DevButton devBtn = new DevButton(fitText(devText, colW - padText), -1, col1X, leftY, colW, btnH, true, AutoDevelopManager.autoInvestDevelopment, DevButton.ButtonType.TOGGLE);
         menuElements.add(devBtn);
         this.idToggleDevelopment = menuElements.size() - 1;
         leftY += btnH + gapM;
@@ -536,7 +752,7 @@ public class Menu_AutoDevelop extends Menu {
         String ecoText = isUkr 
                 ? (AutoDevelopManager.autoInvestEconomy ? "[ВКЛ] Розвиток економіки (інвестиції)" : "[ВИКЛ] Розвиток економіки (інвестиції)")
                 : (AutoDevelopManager.autoInvestEconomy ? "[ON] Economy Investments" : "[OFF] Economy Investments");
-        Button_Classic ecoBtn = new Button_Classic(fitText(ecoText, colW - padText), -1, col1X, leftY, colW, btnH, true, AutoDevelopManager.autoInvestEconomy);
+        DevButton ecoBtn = new DevButton(fitText(ecoText, colW - padText), -1, col1X, leftY, colW, btnH, true, AutoDevelopManager.autoInvestEconomy, DevButton.ButtonType.TOGGLE);
         menuElements.add(ecoBtn);
         this.idToggleEconomy = menuElements.size() - 1;
         leftY += btnH + gapM;
@@ -562,21 +778,15 @@ public class Menu_AutoDevelop extends Menu {
         String tEco = fitText(isUkr ? "Економіка" : "Economy", pPresetW - padText);
         String tStab = fitText(isUkr ? "Стабільність" : "Stability", pPresetW - padText);
 
-        Button_Classic pBal = isBal 
-                ? new Button_Classic(tBal, -1, col2X, rightY, pPresetW, smallBtnH, true, true)
-                : new Button_Classic(tBal, -1, col2X, rightY, pPresetW, smallBtnH, true);
+        DevButton pBal = new DevButton(tBal, -1, col2X, rightY, pPresetW, smallBtnH, true, isBal, DevButton.ButtonType.PRESET);
         menuElements.add(pBal);
         this.idPrioPresetBalanced = menuElements.size() - 1;
 
-        Button_Classic pEco = isEco 
-                ? new Button_Classic(tEco, -1, col2X + pPresetW + presetGap, rightY, pPresetW, smallBtnH, true, true)
-                : new Button_Classic(tEco, -1, col2X + pPresetW + presetGap, rightY, pPresetW, smallBtnH, true);
+        DevButton pEco = new DevButton(tEco, -1, col2X + pPresetW + presetGap, rightY, pPresetW, smallBtnH, true, isEco, DevButton.ButtonType.PRESET);
         menuElements.add(pEco);
         this.idPrioPresetEconomy = menuElements.size() - 1;
 
-        Button_Classic pStab = isStab 
-                ? new Button_Classic(tStab, -1, col2X + (pPresetW + presetGap) * 2, rightY, pPresetW, smallBtnH, true, true)
-                : new Button_Classic(tStab, -1, col2X + (pPresetW + presetGap) * 2, rightY, pPresetW, smallBtnH, true);
+        DevButton pStab = new DevButton(tStab, -1, col2X + (pPresetW + presetGap) * 2, rightY, pPresetW, smallBtnH, true, isStab, DevButton.ButtonType.PRESET);
         menuElements.add(pStab);
         this.idPrioPresetStability = menuElements.size() - 1;
         rightY += smallBtnH + gapM;
@@ -586,35 +796,27 @@ public class Menu_AutoDevelop extends Menu {
         int bW = (colW - ecoGap * 5) / 6;
         int bStep = bW + ecoGap;
 
-        Button_Classic btnM10 = new Button_Classic("-10%", -1, col1X, leftY, bW, smallBtnH, true);
+        DevButton btnM10 = new DevButton("-10%", -1, col1X, leftY, bW, smallBtnH, true, false, DevButton.ButtonType.NORMAL);
         menuElements.add(btnM10);
         this.idEcoM10 = menuElements.size() - 1;
 
-        Button_Classic btnP10 = new Button_Classic("+10%", -1, col1X + bStep, leftY, bW, smallBtnH, true);
+        DevButton btnP10 = new DevButton("+10%", -1, col1X + bStep, leftY, bW, smallBtnH, true, false, DevButton.ButtonType.NORMAL);
         menuElements.add(btnP10);
         this.idEcoP10 = menuElements.size() - 1;
 
-        Button_Classic p80 = (AutoDevelopManager.targetEcoPercentage == 80)
-                ? new Button_Classic("80%", -1, col1X + bStep * 2, leftY, bW, smallBtnH, true, true)
-                : new Button_Classic("80%", -1, col1X + bStep * 2, leftY, bW, smallBtnH, true);
+        DevButton p80 = new DevButton("80%", -1, col1X + bStep * 2, leftY, bW, smallBtnH, true, AutoDevelopManager.targetEcoPercentage == 80, DevButton.ButtonType.SELECTOR);
         menuElements.add(p80);
         this.idEco80 = menuElements.size() - 1;
 
-        Button_Classic p100 = (AutoDevelopManager.targetEcoPercentage == 100)
-                ? new Button_Classic("100%", -1, col1X + bStep * 3, leftY, bW, smallBtnH, true, true)
-                : new Button_Classic("100%", -1, col1X + bStep * 3, leftY, bW, smallBtnH, true);
+        DevButton p100 = new DevButton("100%", -1, col1X + bStep * 3, leftY, bW, smallBtnH, true, AutoDevelopManager.targetEcoPercentage == 100, DevButton.ButtonType.SELECTOR);
         menuElements.add(p100);
         this.idEco100 = menuElements.size() - 1;
 
-        Button_Classic p120 = (AutoDevelopManager.targetEcoPercentage == 120)
-                ? new Button_Classic("120%", -1, col1X + bStep * 4, leftY, bW, smallBtnH, true, true)
-                : new Button_Classic("120%", -1, col1X + bStep * 4, leftY, bW, smallBtnH, true);
+        DevButton p120 = new DevButton("120%", -1, col1X + bStep * 4, leftY, bW, smallBtnH, true, AutoDevelopManager.targetEcoPercentage == 120, DevButton.ButtonType.SELECTOR);
         menuElements.add(p120);
         this.idEco120 = menuElements.size() - 1;
 
-        Button_Classic p150 = (AutoDevelopManager.targetEcoPercentage == 150)
-                ? new Button_Classic("150%", -1, col1X + bStep * 5, leftY, bW, smallBtnH, true, true)
-                : new Button_Classic("150%", -1, col1X + bStep * 5, leftY, bW, smallBtnH, true);
+        DevButton p150 = new DevButton("150%", -1, col1X + bStep * 5, leftY, bW, smallBtnH, true, AutoDevelopManager.targetEcoPercentage == 150, DevButton.ButtonType.SELECTOR);
         menuElements.add(p150);
         this.idEco150 = menuElements.size() - 1;
         leftY += smallBtnH + gapM;
@@ -628,27 +830,19 @@ public class Menu_AutoDevelop extends Menu {
         String resMovesTitle = isUkr ? "Ходи:" : "Moves:";
         menuElements.add(new InfoCell(fitText(resMovesTitle, resLabelW - padText), col2X, rightY, resLabelW, smallBtnH));
 
-        Button_Classic rM0 = (AutoDevelopManager.minMovePointsReserve == 0)
-                ? new Button_Classic("0.0", -1, col2X + resLabelW + resBtnGap, rightY, res4W, smallBtnH, true, true)
-                : new Button_Classic("0.0", -1, col2X + resLabelW + resBtnGap, rightY, res4W, smallBtnH, true);
+        DevButton rM0 = new DevButton("0.0", -1, col2X + resLabelW + resBtnGap, rightY, res4W, smallBtnH, true, AutoDevelopManager.minMovePointsReserve == 0, DevButton.ButtonType.SELECTOR);
         menuElements.add(rM0);
         this.idResMove0 = menuElements.size() - 1;
 
-        Button_Classic rM2 = (AutoDevelopManager.minMovePointsReserve == 20)
-                ? new Button_Classic("2.0", -1, col2X + resLabelW + resBtnGap + resStep, rightY, res4W, smallBtnH, true, true)
-                : new Button_Classic("2.0", -1, col2X + resLabelW + resBtnGap + resStep, rightY, res4W, smallBtnH, true);
+        DevButton rM2 = new DevButton("2.0", -1, col2X + resLabelW + resBtnGap + resStep, rightY, res4W, smallBtnH, true, AutoDevelopManager.minMovePointsReserve == 20, DevButton.ButtonType.SELECTOR);
         menuElements.add(rM2);
         this.idResMove2 = menuElements.size() - 1;
 
-        Button_Classic rM4 = (AutoDevelopManager.minMovePointsReserve == 40)
-                ? new Button_Classic("4.0", -1, col2X + resLabelW + resBtnGap + resStep * 2, rightY, res4W, smallBtnH, true, true)
-                : new Button_Classic("4.0", -1, col2X + resLabelW + resBtnGap + resStep * 2, rightY, res4W, smallBtnH, true);
+        DevButton rM4 = new DevButton("4.0", -1, col2X + resLabelW + resBtnGap + resStep * 2, rightY, res4W, smallBtnH, true, AutoDevelopManager.minMovePointsReserve == 40, DevButton.ButtonType.SELECTOR);
         menuElements.add(rM4);
         this.idResMove4 = menuElements.size() - 1;
 
-        Button_Classic rM6 = (AutoDevelopManager.minMovePointsReserve == 60)
-                ? new Button_Classic("6.0", -1, col2X + resLabelW + resBtnGap + resStep * 3, rightY, res4W, smallBtnH, true, true)
-                : new Button_Classic("6.0", -1, col2X + resLabelW + resBtnGap + resStep * 3, rightY, res4W, smallBtnH, true);
+        DevButton rM6 = new DevButton("6.0", -1, col2X + resLabelW + resBtnGap + resStep * 3, rightY, res4W, smallBtnH, true, AutoDevelopManager.minMovePointsReserve == 60, DevButton.ButtonType.SELECTOR);
         menuElements.add(rM6);
         this.idResMove6 = menuElements.size() - 1;
         rightY += smallBtnH + gapM;
@@ -657,7 +851,7 @@ public class Menu_AutoDevelop extends Menu {
         String notifText = isUkr 
                 ? (AutoDevelopManager.showNotifications ? "[ВКЛ] Сповіщення про виконані дії" : "[ВИКЛ] Сповіщення про виконані дії")
                 : (AutoDevelopManager.showNotifications ? "[ON] Action Notifications" : "[OFF] Action Notifications");
-        Button_Classic notifBtn = new Button_Classic(fitText(notifText, colW - padText), -1, col1X, leftY, colW, smallBtnH, true, AutoDevelopManager.showNotifications);
+        DevButton notifBtn = new DevButton(fitText(notifText, colW - padText), -1, col1X, leftY, colW, smallBtnH, true, AutoDevelopManager.showNotifications, DevButton.ButtonType.TOGGLE);
         menuElements.add(notifBtn);
         this.idToggleNotifications = menuElements.size() - 1;
         leftY += smallBtnH;
@@ -666,27 +860,19 @@ public class Menu_AutoDevelop extends Menu {
         String resGoldTitle = isUkr ? "Золото:" : "Gold:";
         menuElements.add(new InfoCell(fitText(resGoldTitle, resLabelW - padText), col2X, rightY, resLabelW, smallBtnH));
 
-        Button_Classic rG0 = (AutoDevelopManager.minGoldReserve == 0)
-                ? new Button_Classic("0", -1, col2X + resLabelW + resBtnGap, rightY, res4W, smallBtnH, true, true)
-                : new Button_Classic("0", -1, col2X + resLabelW + resBtnGap, rightY, res4W, smallBtnH, true);
+        DevButton rG0 = new DevButton("0", -1, col2X + resLabelW + resBtnGap, rightY, res4W, smallBtnH, true, AutoDevelopManager.minGoldReserve == 0, DevButton.ButtonType.SELECTOR);
         menuElements.add(rG0);
         this.idResGold0 = menuElements.size() - 1;
 
-        Button_Classic rG1k = (AutoDevelopManager.minGoldReserve == 1000)
-                ? new Button_Classic("1 000", -1, col2X + resLabelW + resBtnGap + resStep, rightY, res4W, smallBtnH, true, true)
-                : new Button_Classic("1 000", -1, col2X + resLabelW + resBtnGap + resStep, rightY, res4W, smallBtnH, true);
+        DevButton rG1k = new DevButton("1 000", -1, col2X + resLabelW + resBtnGap + resStep, rightY, res4W, smallBtnH, true, AutoDevelopManager.minGoldReserve == 1000, DevButton.ButtonType.SELECTOR);
         menuElements.add(rG1k);
         this.idResGold1k = menuElements.size() - 1;
 
-        Button_Classic rG5k = (AutoDevelopManager.minGoldReserve == 5000)
-                ? new Button_Classic("5 000", -1, col2X + resLabelW + resBtnGap + resStep * 2, rightY, res4W, smallBtnH, true, true)
-                : new Button_Classic("5 000", -1, col2X + resLabelW + resBtnGap + resStep * 2, rightY, res4W, smallBtnH, true);
+        DevButton rG5k = new DevButton("5 000", -1, col2X + resLabelW + resBtnGap + resStep * 2, rightY, res4W, smallBtnH, true, AutoDevelopManager.minGoldReserve == 5000, DevButton.ButtonType.SELECTOR);
         menuElements.add(rG5k);
         this.idResGold5k = menuElements.size() - 1;
 
-        Button_Classic rG10k = (AutoDevelopManager.minGoldReserve == 10000)
-                ? new Button_Classic("10 000", -1, col2X + resLabelW + resBtnGap + resStep * 3, rightY, res4W, smallBtnH, true, true)
-                : new Button_Classic("10 000", -1, col2X + resLabelW + resBtnGap + resStep * 3, rightY, res4W, smallBtnH, true);
+        DevButton rG10k = new DevButton("10 000", -1, col2X + resLabelW + resBtnGap + resStep * 3, rightY, res4W, smallBtnH, true, AutoDevelopManager.minGoldReserve == 10000, DevButton.ButtonType.SELECTOR);
         menuElements.add(rG10k);
         this.idResGold10k = menuElements.size() - 1;
         rightY += smallBtnH;
@@ -700,13 +886,13 @@ public class Menu_AutoDevelop extends Menu {
         curY = columnsEndY + gapL;
 
         String runText = isUkr ? "ЗАПУСТИТИ ЗАРАЗ (НА ПОТОЧНОМУ ХОДІ)" : "RUN AUTOMATION NOW (THIS TURN)";
-        Button_Classic runBtn = new Button_Classic(fitText(runText, menuW - padText), -1, startX, curY, menuW, actionBtnH, true);
+        DevButton runBtn = new DevButton(fitText(runText, menuW - padText), -1, startX, curY, menuW, actionBtnH, true, false, DevButton.ButtonType.ACTION);
         menuElements.add(runBtn);
         this.idRunNow = menuElements.size() - 1;
         curY += actionBtnH + gapM;
 
         String closeTextBottom = isUkr ? "Повернутися до гри" : "Return to Game";
-        Button_Classic closeBtnBottom = new Button_Classic(fitText(closeTextBottom, menuW - padText), -1, startX, curY, menuW, closeBottomH, true);
+        DevButton closeBtnBottom = new DevButton(fitText(closeTextBottom, menuW - padText), -1, startX, curY, menuW, closeBottomH, true, false, DevButton.ButtonType.ACTION);
         menuElements.add(closeBtnBottom);
         this.idCloseBottom = menuElements.size() - 1;
         curY += closeBottomH;
@@ -718,7 +904,7 @@ public class Menu_AutoDevelop extends Menu {
         menuElements.add(new Button_Transparent(0, 0, gw, gh, true));
 
         this.initMenu(null, 0, 0, gw, gh, menuElements);
-        super.setVisibleM(false);
+        super.setVisibleM(wasVisible);
     }
 
     private void addPriorityRow(List<MenuElemUI> menuElements, int i, int col2X, int rowY, int prioNameW, int upDownW, int btnH, int gap, boolean isUkr, int padText) {
@@ -726,17 +912,17 @@ public class Menu_AutoDevelop extends Menu {
         String name = AutoDevelopManager.getPriorityName(prioType, isUkr);
         String rowText = "[ " + (i + 1) + " ] " + name;
 
-        Button_Classic prioBtn = new Button_Classic(fitText(rowText, prioNameW - padText), -1, col2X, rowY, prioNameW, btnH, true);
+        DevButton prioBtn = new DevButton(fitText(rowText, prioNameW - padText), -1, col2X, rowY, prioNameW, btnH, true, false, DevButton.ButtonType.NORMAL);
         menuElements.add(prioBtn);
         this.idPrioRow[i] = menuElements.size() - 1;
 
         boolean canUp = (i > 0);
-        Button_Classic upBtn = new Button_Classic("^", -1, col2X + prioNameW + gap, rowY, upDownW, btnH, canUp);
+        DevButton upBtn = new DevButton("^", -1, col2X + prioNameW + gap, rowY, upDownW, btnH, canUp, false, DevButton.ButtonType.NORMAL);
         menuElements.add(upBtn);
         this.idPrioUp[i] = menuElements.size() - 1;
 
         boolean canDown = (i < 3);
-        Button_Classic downBtn = new Button_Classic("v", -1, col2X + prioNameW + gap + upDownW + gap, rowY, upDownW, btnH, canDown);
+        DevButton downBtn = new DevButton("v", -1, col2X + prioNameW + gap + upDownW + gap, rowY, upDownW, btnH, canDown, false, DevButton.ButtonType.NORMAL);
         menuElements.add(downBtn);
         this.idPrioDown[i] = menuElements.size() - 1;
     }
