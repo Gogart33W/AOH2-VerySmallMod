@@ -556,12 +556,12 @@ extends Menu {
 
             @Override
             public int getPosXE() {
-                return Menu_InGame_2.this.getMenuElem(9).getPosXE() + Menu_InGame_2.this.getMenuElem(9).getWidthE();
+                return Menu_InGame_2.this.getMenuElem(9).getPosXE() + Menu_InGame_2.this.getMenuElem(9).getWidthE() + CFG.PADD * 3;
             }
 
             @Override
             public int getWidthE() {
-                return this.getTextWidthU() + CFG.PADD * 4;
+                return this.getTextWidthU() + CFG.PADD * 6;
             }
 
             @Override
@@ -1112,7 +1112,7 @@ extends Menu {
         this.getMenuElem(9).setTextE(CFG.lang.get("MapModes"));
         if (this.getMenuElemsSize() > 14) {
             boolean isUkr = CFG.lang.get("LANGUAGENAME").equalsIgnoreCase("Українська");
-            this.getMenuElem(14).setTextE(isUkr ? "Авто" : "Auto");
+            this.getMenuElem(14).setTextE(isUkr ? "Авто-розвиток" : "Auto-Develop");
         }
     }
 
@@ -1174,7 +1174,15 @@ extends Menu {
         }
         int n = nElemWidthID = this.getMenuElem(10).getVisibleE() ? 10 : 3;
         if (!MENU_AOC_1) {
-            IMGManager.getIMG(Images.topBar2).draw2(oSB, iTranslateX + this.getMenuElem(8).getPosXE(), iTranslateY, this.getMenuElem(8).getWidthE() + this.getMenuElem(9).getWidthE() + (this.getMenuElemsSize() > 14 ? this.getMenuElem(14).getWidthE() : 0) + CFG.topBox.topBarPaddingRight, IMGManager.getIMG(Images.topBar2).getHeight(), true, false);
+            int extraW = (this.getMenuElemsSize() > 14 ? (this.getMenuElem(14).getWidthE() + CFG.PADD * 3) : 0);
+            IMGManager.getIMG(Images.topBar2).draw2(oSB, iTranslateX + this.getMenuElem(8).getPosXE(), iTranslateY, this.getMenuElem(8).getWidthE() + this.getMenuElem(9).getWidthE() + extraW + CFG.topBox.topBarPaddingRight, IMGManager.getIMG(Images.topBar2).getHeight(), true, false);
+            if (this.getMenuElemsSize() > 14) {
+                int sepX = iTranslateX + this.getMenuElem(9).getPosXE() + this.getMenuElem(9).getWidthE() + CFG.PADD;
+                int topBarH = IMGManager.getIMG(Images.topBar).getHeight();
+                oSB.setColor(new Color(1.0f, 1.0f, 1.0f, 0.22f));
+                IMGManager.getIMG(Images.pix255).draw(oSB, sepX, iTranslateY + CFG.PADD * 2, 1, topBarH - CFG.PADD * 4);
+                oSB.setColor(Color.WHITE);
+            }
             IMGManager.getIMG(Images.topBar2).draw2(oSB, iTranslateX + this.getMenuElem(nElemWidthID).getPosXE() + this.getMenuElem(nElemWidthID).getWidthE(), iTranslateY, this.getMenuElem(8).getWidthE(), IMGManager.getIMG(Images.topBar2).getHeight(), true, false);
             IMGManager.getIMG(Images.topBar).draw2(oSB, iTranslateX, iTranslateY, this.getMenuElem(nElemWidthID).getPosXE() + this.getMenuElem(nElemWidthID).getWidthE() + CFG.topBox.topBarPaddingRight, IMGManager.getIMG(Images.topBar).getHeight(), true, false);
             IMGManager.getIMG(Images.topFlagBG).draw(oSB, iTranslateX, iTranslateY);

@@ -56,13 +56,13 @@ public class AutoDevelopManager {
     public static String getPriorityName(int prio, boolean isUkr) {
         switch (prio) {
             case PRIO_ASSIMILATE:
-                return isUkr ? "Асиміляція (Стабільність)" : "Assimilation (Stability)";
+                return isUkr ? "Асиміляція" : "Assimilation";
             case PRIO_FESTIVAL:
-                return isUkr ? "Ярмарки (Щастя)" : "Festivals (Happiness)";
+                return isUkr ? "Ярмарки" : "Festivals";
             case PRIO_ECONOMY:
-                return isUkr ? "Економіка (% населення)" : "Economy (% of Pop)";
+                return isUkr ? "Економіка" : "Economy";
             case PRIO_DEVELOPMENT:
-                return isUkr ? "Дослідження (Рівень науки)" : "Research (Civ Tech Level)";
+                return isUkr ? "Дослідження" : "Research";
             default:
                 return "";
         }
