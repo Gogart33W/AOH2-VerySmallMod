@@ -157,6 +157,24 @@ public class Menu_AutoDevelop extends Menu {
         return text.substring(0, maxChars - 3) + "...";
     }
 
+    public static int measureTextWidth(String text) {
+        return measureTextWidth(text, 0);
+    }
+
+    public static int measureTextWidth(String text, int fontID) {
+        if (text == null || text.isEmpty()) {
+            return 0;
+        }
+        try {
+            if (CFG.glyphLay != null && CFG.fontMain != null && fontID < CFG.fontMain.size() && CFG.fontMain.get(fontID) != null) {
+                CFG.glyphLay.setText(CFG.fontMain.get(fontID), text);
+                return (int)CFG.glyphLay.width;
+            }
+        } catch (Exception ignored) {
+        }
+        return text.length() * 11;
+    }
+
     /**
      * InfoCell - спеціальний елемент для відображення неклікабельних інформаційних комірок.
      * Не є вимкненою кнопкою (не малює блідого 0.45f тексту й блідої підкладки),
@@ -240,24 +258,34 @@ public class Menu_AutoDevelop extends Menu {
             int w = this.getWidthE();
             int h = this.getHeightE();
 
-            if (this.bgColor != null && this.bgColor.a > 0.0f) {
-                oSB.setColor(this.bgColor);
-                IMGManager.getIMG(Images.pix255).draw(oSB, x, y, w, h);
+            try {
+                if (this.bgColor != null && this.bgColor.a > 0.0f) {
+                    oSB.setColor(this.bgColor);
+                    IMGManager.getIMG(Images.pix255).draw(oSB, x, y, w, h);
+                }
+
+                if (this.drawBorder && this.borderColor != null && this.borderColor.a > 0.0f) {
+                    oSB.setColor(this.borderColor);
+                    IMGManager.getIMG(Images.pix255).draw(oSB, x, y, w, 1);
+                    IMGManager.getIMG(Images.pix255).draw(oSB, x, y + h - 1, w, 1);
+                    IMGManager.getIMG(Images.pix255).draw(oSB, x, y, 1, h);
+                    IMGManager.getIMG(Images.pix255).draw(oSB, x + w - 1, y, 1, h);
+                }
+
+                oSB.setColor(Color.WHITE);
+
+                int textX = x + (w - this.iTextWidth) / 2;
+                int textY = y + (h - this.iTextHeight) / 2;
+                Renderer.drawTextWithShadow(oSB, this.fontID, this.sText, textX, textY, this.textColor);
+            } finally {
+                oSB.setColor(Color.WHITE);
+                try {
+                    if (CFG.fontMain != null && this.fontID < CFG.fontMain.size() && CFG.fontMain.get(this.fontID) != null) {
+                        CFG.fontMain.get(this.fontID).setColor(Color.WHITE);
+                    }
+                } catch (Exception ignored) {
+                }
             }
-
-            if (this.drawBorder && this.borderColor != null && this.borderColor.a > 0.0f) {
-                oSB.setColor(this.borderColor);
-                IMGManager.getIMG(Images.pix255).draw(oSB, x, y, w, 1);
-                IMGManager.getIMG(Images.pix255).draw(oSB, x, y + h - 1, w, 1);
-                IMGManager.getIMG(Images.pix255).draw(oSB, x, y, 1, h);
-                IMGManager.getIMG(Images.pix255).draw(oSB, x + w - 1, y, 1, h);
-            }
-
-            oSB.setColor(Color.WHITE);
-
-            int textX = x + (w - this.iTextWidth) / 2;
-            int textY = y + (h - this.iTextHeight) / 2;
-            Renderer.drawTextWithShadow(oSB, this.fontID, this.sText, textX, textY, this.textColor);
         }
     }
 
@@ -351,7 +379,7 @@ public class Menu_AutoDevelop extends Menu {
         this.idCloseTop = menuElements.size() - 1;
         curY += titleH + gapM;
 
-        // 3. Дані держави та ресурси (розбито на 4 окремі комірки, кожна у свою чверть)
+        // 3. Дані держави та ресурси (адаптивні нерівні комірки: назві держави виділяється ~38% ширини, решта ділять залишок)
         int playerCivID = -1;
         try {
             if (CFG.core != null && CFG.core.getPlayer(CFG.PLAYER_TURN_ID) != null) {
@@ -367,19 +395,43 @@ public class Menu_AutoDevelop extends Menu {
         String civName = (pCiv != null) ? pCiv.getCivName() : (isUkr ? "Держава" : "Civilization");
         int numProvs = (pCiv != null) ? pCiv.getNumOfProvs() : 0;
 
-        int numCells = 4;
         int statusGap = Math.max(3, pad);
-        int cellW = (menuW - statusGap * (numCells - 1)) / numCells;
+        int cell1W = (int)(menuW * 0.38f);
+        int remStatusW = menuW - cell1W - statusGap * 3;
+        int restCellW = remStatusW / 3;
 
-        String c1 = civName + " (" + numProvs + (isUkr ? " пр.)" : " pr.)");
+        // Поетапне адаптивне скорочення суфіксу провінцій перед урізанням самої назви держави
+        String c1;
+        String pFull = " (" + numProvs + (isUkr ? " провінцій)" : " provs)");
+        String pShort1 = " (" + numProvs + (isUkr ? " пров.)" : " prov.)");
+        String pShort2 = " (" + numProvs + (isUkr ? " пр.)" : " pr.)");
+        String pNumOnly = " (" + numProvs + ")";
+
+        int maxC1TextW = cell1W - padText;
+        if (measureTextWidth(civName + pFull) <= maxC1TextW) {
+            c1 = civName + pFull;
+        } else if (measureTextWidth(civName + pShort1) <= maxC1TextW) {
+            c1 = civName + pShort1;
+        } else if (measureTextWidth(civName + pShort2) <= maxC1TextW) {
+            c1 = civName + pShort2;
+        } else if (measureTextWidth(civName + pNumOnly) <= maxC1TextW) {
+            c1 = civName + pNumOnly;
+        } else {
+            c1 = fitText(civName + pNumOnly, maxC1TextW);
+        }
+
         String c2 = (isUkr ? "Ходи: " : "Moves: ") + CFG.getPrecision2(movPts, 10);
         String c3 = (isUkr ? "Дипломатія: " : "Diplo: ") + CFG.getPrecision2(dipPts, 10);
         String c4 = (isUkr ? "Золото: " : "Gold: ") + CFG.getNumberWthSpaces("" + gold);
 
-        menuElements.add(new InfoCell(fitText(c1, cellW - padText), startX, curY, cellW, statusH));
-        menuElements.add(new InfoCell(fitText(c2, cellW - padText), startX + (cellW + statusGap), curY, cellW, statusH));
-        menuElements.add(new InfoCell(fitText(c3, cellW - padText), startX + (cellW + statusGap) * 2, curY, cellW, statusH));
-        menuElements.add(new InfoCell(fitText(c4, cellW - padText), startX + (cellW + statusGap) * 3, curY, cellW, statusH));
+        int curStatusX = startX;
+        menuElements.add(new InfoCell(c1, curStatusX, curY, cell1W, statusH));
+        curStatusX += cell1W + statusGap;
+        menuElements.add(new InfoCell(fitText(c2, restCellW - padText), curStatusX, curY, restCellW, statusH));
+        curStatusX += restCellW + statusGap;
+        menuElements.add(new InfoCell(fitText(c3, restCellW - padText), curStatusX, curY, restCellW, statusH));
+        curStatusX += restCellW + statusGap;
+        menuElements.add(new InfoCell(fitText(c4, restCellW - padText), curStatusX, curY, restCellW, statusH));
         curY += statusH + gapS;
 
         // 4. Рядок діагностики потреб провінцій (розбито на 4 чіткі комірки InfoCell)
@@ -394,10 +446,11 @@ public class Menu_AutoDevelop extends Menu {
         String d4 = (isUkr ? "Науки: " : "Dev: ") + needDev;
 
         Color alertCol = new Color(0.92f, 0.78f, 0.35f, 1.0f);
-        InfoCell ic1 = new InfoCell(fitText(d1, cellW - padText), startX, curY, cellW, statusH);
-        InfoCell ic2 = new InfoCell(fitText(d2, cellW - padText), startX + (cellW + statusGap), curY, cellW, statusH);
-        InfoCell ic3 = new InfoCell(fitText(d3, cellW - padText), startX + (cellW + statusGap) * 2, curY, cellW, statusH);
-        InfoCell ic4 = new InfoCell(fitText(d4, cellW - padText), startX + (cellW + statusGap) * 3, curY, cellW, statusH);
+        int diagCellW = (menuW - statusGap * 3) / 4;
+        InfoCell ic1 = new InfoCell(fitText(d1, diagCellW - padText), startX, curY, diagCellW, statusH);
+        InfoCell ic2 = new InfoCell(fitText(d2, diagCellW - padText), startX + (diagCellW + statusGap), curY, diagCellW, statusH);
+        InfoCell ic3 = new InfoCell(fitText(d3, diagCellW - padText), startX + (diagCellW + statusGap) * 2, curY, diagCellW, statusH);
+        InfoCell ic4 = new InfoCell(fitText(d4, diagCellW - padText), startX + (diagCellW + statusGap) * 3, curY, diagCellW, statusH);
 
         if (needAssi > 0) ic1.setColors(alertCol, null, null);
         if (needFest > 0) ic2.setColors(alertCol, null, null);
@@ -557,11 +610,12 @@ public class Menu_AutoDevelop extends Menu {
         this.idEco150 = menuElements.size() - 1;
 
         // Резерв ходів (підпис InfoCell, лише вибране значення має checked стиль)
-        int resLabelW = Math.max(115, (int)(colW * 0.28f));
+        int resLabelW = Math.max(90, (int)(colW * 0.22f));
         int res4W = (colW - resLabelW - pad * 4) / 4;
         int resStep = res4W + pad;
 
-        menuElements.add(new InfoCell(fitText(isUkr ? "Резерв ходів:" : "Move Reserve:", resLabelW - padText), col2X, rowY, resLabelW, smallBtnH));
+        String resMovesTitle = isUkr ? "Ходи:" : "Moves:";
+        menuElements.add(new InfoCell(fitText(resMovesTitle, resLabelW - padText), col2X, rowY, resLabelW, smallBtnH));
 
         Button_Classic rM0 = (AutoDevelopManager.minMovePointsReserve == 0)
                 ? new Button_Classic("0.0", -1, col2X + resLabelW + pad, rowY, res4W, smallBtnH, true, true)
@@ -590,14 +644,15 @@ public class Menu_AutoDevelop extends Menu {
 
         // --- РЯДОК 8: ТУМБЛЕР СПОВІЩЕНЬ / РЕЗЕРВ ЗОЛОТА ---
         String notifText = isUkr 
-                ? (AutoDevelopManager.showNotifications ? "[ВКЛ] Сповіщення про виконані дії" : "[ВИКЛ] Сповіщення про дії")
+                ? (AutoDevelopManager.showNotifications ? "[ВКЛ] Сповіщення про дії" : "[ВИКЛ] Сповіщення про дії")
                 : (AutoDevelopManager.showNotifications ? "[ON] Action Notifications" : "[OFF] Action Notifications");
         Button_Classic notifBtn = new Button_Classic(fitText(notifText, colW - padText), -1, col1X, rowY, colW, smallBtnH, true, AutoDevelopManager.showNotifications);
         menuElements.add(notifBtn);
         this.idToggleNotifications = menuElements.size() - 1;
 
         // Резерв золота (підпис InfoCell, лише вибране значення має checked стиль)
-        menuElements.add(new InfoCell(fitText(isUkr ? "Резерв золота:" : "Gold Reserve:", resLabelW - padText), col2X, rowY, resLabelW, smallBtnH));
+        String resGoldTitle = isUkr ? "Золото:" : "Gold:";
+        menuElements.add(new InfoCell(fitText(resGoldTitle, resLabelW - padText), col2X, rowY, resLabelW, smallBtnH));
 
         Button_Classic rG0 = (AutoDevelopManager.minGoldReserve == 0)
                 ? new Button_Classic("0", -1, col2X + resLabelW + pad, rowY, res4W, smallBtnH, true, true)

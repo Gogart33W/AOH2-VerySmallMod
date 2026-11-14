@@ -174,6 +174,7 @@ public class MenuLayoutVerifier {
     public static void main(String[] args) {
         initGdx();
         System.out.println("=== HEADLESS LAYOUT VERIFICATION ===");
+        System.out.println("[INFO] Note: In headless mode without game font glyph textures, text width verification relies on approxCharW (11px). Visual and pixel verification must be confirmed in-game.");
         int[][] resList = new int[][]{
                 {962, 725},
                 {1280, 720},
