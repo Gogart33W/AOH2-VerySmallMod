@@ -113,6 +113,7 @@ public class GameCalendar {
         GameCalendar.nextDays(CFG.gameAges.getAge_TurnDays(CURRENT_AGEID));
         try {
             age.of.civilizations2.jakowski.lukasz.Menus.Vassal.VassalManager.syncAllVassals();
+            age.of.civilizations2.jakowski.lukasz.Menus.AutoDevelop.AutoDevelopManager.runAutoDevelopTurn();
         } catch (Exception ignored) {
         }
     }

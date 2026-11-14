@@ -47,7 +47,7 @@ echo "Компілюємо файли моду..."
 SOURCES_FILE="$BUILD_DIR/sources.txt"
 find "$SCRIPT_DIR/src" -name "*.java" | sed 's/^/"/;s/$/"/' > "$SOURCES_FILE"
 
-"$JAVAC_BIN" --release 8 -Xlint:-options \
+"$JAVAC_BIN" --release 8 -encoding UTF-8 -Xlint:-options \
     -cp "$GAME_ROOT/game.jar.original" \
     -d "$BUILD_DIR" \
     @"$SOURCES_FILE"

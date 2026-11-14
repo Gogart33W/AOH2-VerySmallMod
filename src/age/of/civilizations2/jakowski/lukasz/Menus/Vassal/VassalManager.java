@@ -30,13 +30,17 @@ public class VassalManager {
 
     /**
      * Встановлює необхідні пороги для пропозиції васалізації:
-     * стосунки >= 50.0, коефіцієнт бюджету = 5.0
+     * стосунки >= 50.0, коефіцієнт бюджету = 3.5,
+     * а також запобігає падінню стабільності (асиміляції) через хвороби (STABILITY_DISEASE = 0.0).
      */
     public static void applyDiplomacyValues() {
         try {
             if (GameValues.gvAiDiplomacy != null) {
-                GameValues.gvAiDiplomacy.OFFER_VASSALIZATION_BUDGET_RATIO_TO_ACCEPT = 5.0f;
+                GameValues.gvAiDiplomacy.OFFER_VASSALIZATION_BUDGET_RATIO_TO_ACCEPT = 3.5f;
                 GameValues.gvAiDiplomacy.OFFER_VASSALIZATION_MIN_RELATION = 50.0f;
+            }
+            if (GameValues.gvStability != null) {
+                GameValues.gvStability.STABILITY_DISEASE = 0.0f;
             }
         } catch (Exception ex) {
             CFG.exceptionStack(ex);

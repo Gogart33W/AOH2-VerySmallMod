@@ -166,7 +166,23 @@ public class Menu_InGame_Options2 extends Menu {
             }
         });
 
-        // 7. Surrender
+        // 7. Auto-Develop Provinces (NEW FEATURE)
+        menuElements.add(new Button_Classic_LR_Main(null, -1, buttonX, 0, buttonW, buttonH, true) {
+            @Override
+            public void buildElemHover() {
+                ArrayList<MEHover_2E> nElements = new ArrayList<>();
+                List<ME_Hover_2Type> nData = new ArrayList<>();
+                boolean isUkr = CFG.lang.get("LANGUAGENAME").equalsIgnoreCase("Українська");
+                nData.add(new ME_Hover_2Type_Text(
+                        isUkr ? "Автоматичний розвиток економіки та досліджень у провінціях" : "Auto-develop economy and research in provinces",
+                        CFG.COLOR_HOVER_TITLE
+                ));
+                nElements.add(new MEHover_2E(nData));
+                this.menuElemHover = new ME_Hover_v2(nElements);
+            }
+        });
+
+        // 8. Surrender
         menuElements.add(new Button_Classic_LR_Main(null, -1, buttonX, 0, buttonW, buttonH, true) {
             @Override
             public boolean getIsClickable() {
@@ -174,7 +190,7 @@ public class Menu_InGame_Options2 extends Menu {
             }
         });
 
-        // 8. Exit to Main Menu
+        // 9. Exit to Main Menu
         if (eGS == 306 || eGS == 278 || eGS == 550) {
             menuElements.add(new Button_Classic_LR_Main(null, -1, buttonX, 0, buttonW, buttonH, true));
         } else {
@@ -209,8 +225,9 @@ public class Menu_InGame_Options2 extends Menu {
         this.getMenuElem(5).setTextE(CFG.lang.get("GameOptions"));
         boolean isUkr = CFG.lang.get("LANGUAGENAME").equalsIgnoreCase("Українська");
         this.getMenuElem(6).setTextE(isUkr ? "Змінити країну" : "Switch Country");
-        this.getMenuElem(7).setTextE(CFG.lang.get("Surrender"));
-        this.getMenuElem(8).setTextE(CFG.lang.get("ExitToMainMenu"));
+        this.getMenuElem(7).setTextE(isUkr ? "Авто-розвиток провінцій" : "Auto-Develop Provinces");
+        this.getMenuElem(8).setTextE(CFG.lang.get("Surrender"));
+        this.getMenuElem(9).setTextE(CFG.lang.get("ExitToMainMenu"));
     }
 
     @Override
@@ -285,10 +302,16 @@ public class Menu_InGame_Options2 extends Menu {
                 break;
             }
             case 7: {
-                CFG.setDialogType(DialogType.SURRENDER);
+                // Ховаємо меню налаштувань та відкриваємо вікно авто-розвитку провінцій
+                CFG.menus.setVisible_InGame_Options(false);
+                age.of.civilizations2.jakowski.lukasz.Menus.AutoDevelop.Menu_AutoDevelop.open();
                 break;
             }
             case 8: {
+                CFG.setDialogType(DialogType.SURRENDER);
+                break;
+            }
+            case 9: {
                 CFG.setDialogType(DialogType.PAUSE_GAME);
                 break;
             }
