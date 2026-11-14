@@ -157,6 +157,16 @@ public class Menu_AutoDevelop extends Menu {
         return text.substring(0, maxChars - 3) + "...";
     }
 
+    public static String getProvincesPlural(int n, boolean isUkr) {
+        if (!isUkr) return (n == 1) ? "province" : "provinces";
+        int mod100 = n % 100;
+        int mod10 = n % 10;
+        if (mod100 >= 11 && mod100 <= 19) return "провінцій";
+        if (mod10 == 1) return "провінція";
+        if (mod10 >= 2 && mod10 <= 4) return "провінції";
+        return "провінцій";
+    }
+
     public static int measureTextWidth(String text) {
         return measureTextWidth(text, 0);
     }
@@ -219,8 +229,7 @@ public class Menu_AutoDevelop extends Menu {
                 if (this.sText.length() > 0 && CFG.glyphLay != null && CFG.fontMain != null && !CFG.fontMain.isEmpty()) {
                     CFG.glyphLay.setText(CFG.fontMain.get(this.fontID), this.sText);
                     this.iTextWidth = (int)CFG.glyphLay.width;
-                    this.iTextHeight = (int)CFG.glyphLay.height;
-                    if (this.iTextHeight == 0) this.iTextHeight = CFG.TEXT_HEIGHT_DEFAULT;
+                    this.iTextHeight = CFG.TEXT_HEIGHT_DEFAULT;
                 } else {
                     this.iTextWidth = this.sText.length() * 10;
                     this.iTextHeight = CFG.TEXT_HEIGHT_DEFAULT;
@@ -348,6 +357,7 @@ public class Menu_AutoDevelop extends Menu {
 
         int totalDialogH = (titleH + gapM)
                 + (statusH + gapS)
+                + (statusH + gapS)
                 + (statusH + gapL)
                 + (masterBtnH + gapL)
                 + syncedColumnsH
@@ -379,7 +389,7 @@ public class Menu_AutoDevelop extends Menu {
         this.idCloseTop = menuElements.size() - 1;
         curY += titleH + gapM;
 
-        // 3. Дані держави та ресурси (адаптивні нерівні комірки: назві держави виділяється ~38% ширини, решта ділять залишок)
+        // 3. Назва держави та кількість провінцій (на повну ширину діалогу, щоб жодна держава ніколи не обрізалась!)
         int playerCivID = -1;
         try {
             if (CFG.core != null && CFG.core.getPlayer(CFG.PLAYER_TURN_ID) != null) {
@@ -396,54 +406,34 @@ public class Menu_AutoDevelop extends Menu {
         int numProvs = (pCiv != null) ? pCiv.getNumOfProvs() : 0;
 
         int statusGap = Math.max(3, pad);
-        int cell1W = (int)(menuW * 0.38f);
-        int remStatusW = menuW - cell1W - statusGap * 3;
-        int restCellW = remStatusW / 3;
 
-        // Поетапне адаптивне скорочення суфіксу провінцій перед урізанням самої назви держави
-        String c1;
-        String pFull = " (" + numProvs + (isUkr ? " провінцій)" : " provs)");
-        String pShort1 = " (" + numProvs + (isUkr ? " пров.)" : " prov.)");
-        String pShort2 = " (" + numProvs + (isUkr ? " пр.)" : " pr.)");
-        String pNumOnly = " (" + numProvs + ")";
+        String civFull = (isUkr ? "Держава: " : "Civ: ") + civName + " (" + numProvs + " " + getProvincesPlural(numProvs, isUkr) + ")";
+        InfoCell civCell = new InfoCell(fitText(civFull, menuW - padText), startX, curY, menuW, statusH);
+        civCell.setColors(new Color(0.95f, 0.95f, 1.0f, 1.0f), new Color(0.09f, 0.12f, 0.18f, 0.85f), null);
+        menuElements.add(civCell);
+        curY += statusH + gapS;
 
-        int maxC1TextW = cell1W - padText;
-        if (measureTextWidth(civName + pFull) <= maxC1TextW) {
-            c1 = civName + pFull;
-        } else if (measureTextWidth(civName + pShort1) <= maxC1TextW) {
-            c1 = civName + pShort1;
-        } else if (measureTextWidth(civName + pShort2) <= maxC1TextW) {
-            c1 = civName + pShort2;
-        } else if (measureTextWidth(civName + pNumOnly) <= maxC1TextW) {
-            c1 = civName + pNumOnly;
-        } else {
-            c1 = fitText(civName + pNumOnly, maxC1TextW);
-        }
-
+        // 4. Показники ресурсів (3 просторі комірки: Ходи | Дипломатія | Золото)
+        int resCellW = (menuW - statusGap * 2) / 3;
         String c2 = (isUkr ? "Ходи: " : "Moves: ") + CFG.getPrecision2(movPts, 10);
         String c3 = (isUkr ? "Дипломатія: " : "Diplo: ") + CFG.getPrecision2(dipPts, 10);
         String c4 = (isUkr ? "Золото: " : "Gold: ") + CFG.getNumberWthSpaces("" + gold);
 
-        int curStatusX = startX;
-        menuElements.add(new InfoCell(c1, curStatusX, curY, cell1W, statusH));
-        curStatusX += cell1W + statusGap;
-        menuElements.add(new InfoCell(fitText(c2, restCellW - padText), curStatusX, curY, restCellW, statusH));
-        curStatusX += restCellW + statusGap;
-        menuElements.add(new InfoCell(fitText(c3, restCellW - padText), curStatusX, curY, restCellW, statusH));
-        curStatusX += restCellW + statusGap;
-        menuElements.add(new InfoCell(fitText(c4, restCellW - padText), curStatusX, curY, restCellW, statusH));
+        menuElements.add(new InfoCell(fitText(c2, resCellW - padText), startX, curY, resCellW, statusH));
+        menuElements.add(new InfoCell(fitText(c3, resCellW - padText), startX + resCellW + statusGap, curY, resCellW, statusH));
+        menuElements.add(new InfoCell(fitText(c4, resCellW - padText), startX + (resCellW + statusGap) * 2, curY, resCellW, statusH));
         curY += statusH + gapS;
 
-        // 4. Рядок діагностики потреб провінцій (розбито на 4 чіткі комірки InfoCell)
+        // 5. Потреби провінцій (4 чіткі комірки InfoCell)
         int needAssi = (playerCivID > 0) ? AutoDevelopManager.getNeedAssimilateCount(playerCivID) : 0;
         int needFest = (playerCivID > 0) ? AutoDevelopManager.getNeedFestivalCount(playerCivID) : 0;
         int needEco = (playerCivID > 0) ? AutoDevelopManager.getNeedEconomyCount(playerCivID) : 0;
         int needDev = (playerCivID > 0) ? AutoDevelopManager.getNeedDevelopmentCount(playerCivID) : 0;
 
-        String d1 = (isUkr ? "Асим: " : "Assim: ") + needAssi;
-        String d2 = (isUkr ? "Ярмарок: " : "Fest: ") + needFest;
-        String d3 = (isUkr ? "Екон: " : "Eco: ") + needEco;
-        String d4 = (isUkr ? "Науки: " : "Dev: ") + needDev;
+        String d1 = (isUkr ? "Асиміляція: " : "Assim: ") + needAssi;
+        String d2 = (isUkr ? "Ярмарки: " : "Fest: ") + needFest;
+        String d3 = (isUkr ? "Економіка: " : "Eco: ") + needEco;
+        String d4 = (isUkr ? "Дослідження: " : "Dev: ") + needDev;
 
         Color alertCol = new Color(0.92f, 0.78f, 0.35f, 1.0f);
         int diagCellW = (menuW - statusGap * 3) / 4;
@@ -551,8 +541,8 @@ public class Menu_AutoDevelop extends Menu {
         boolean isStab = (AutoDevelopManager.priorities[0] == AutoDevelopManager.PRIO_ASSIMILATE && AutoDevelopManager.priorities[1] == AutoDevelopManager.PRIO_DEVELOPMENT);
 
         String tBal = fitText(isUkr ? "Баланс" : "Balance", pPresetW - padText);
-        String tEco = fitText(isUkr ? "Економ." : "Economy", pPresetW - padText);
-        String tStab = fitText(isUkr ? "Стабіл." : "Stability", pPresetW - padText);
+        String tEco = fitText(isUkr ? "Економіка" : "Economy", pPresetW - padText);
+        String tStab = fitText(isUkr ? "Стабільність" : "Stability", pPresetW - padText);
 
         Button_Classic pBal = isBal 
                 ? new Button_Classic(tBal, -1, col2X, rowY, pPresetW, smallBtnH, true, true)
@@ -644,7 +634,7 @@ public class Menu_AutoDevelop extends Menu {
 
         // --- РЯДОК 8: ТУМБЛЕР СПОВІЩЕНЬ / РЕЗЕРВ ЗОЛОТА ---
         String notifText = isUkr 
-                ? (AutoDevelopManager.showNotifications ? "[ВКЛ] Сповіщення про дії" : "[ВИКЛ] Сповіщення про дії")
+                ? (AutoDevelopManager.showNotifications ? "[ВКЛ] Сповіщення про виконані дії" : "[ВИКЛ] Сповіщення про виконані дії")
                 : (AutoDevelopManager.showNotifications ? "[ON] Action Notifications" : "[OFF] Action Notifications");
         Button_Classic notifBtn = new Button_Classic(fitText(notifText, colW - padText), -1, col1X, rowY, colW, smallBtnH, true, AutoDevelopManager.showNotifications);
         menuElements.add(notifBtn);
