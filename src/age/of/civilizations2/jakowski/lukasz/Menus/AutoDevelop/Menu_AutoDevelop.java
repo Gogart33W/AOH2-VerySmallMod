@@ -52,7 +52,9 @@ public class Menu_AutoDevelop extends Menu {
     private int idEco100 = -1;
     private int idEco120 = -1;
     private int idEco150 = -1;
+    private int idToggleAutoBuild = -1;
     private int idToggleNotifications = -1;
+    private int idDemobilizeArmies = -1;
 
     // Пріоритети (права колонка)
     private int[] idPrioRow = new int[4];
@@ -546,23 +548,20 @@ public class Menu_AutoDevelop extends Menu {
         // Коефіцієнт масштабування висоти від 720p до 1080p+ (0.0 на 720p, 1.0 на 1080p)
         float hRatio = Math.max(0.0f, Math.min(1.2f, (gh - 720f) / (1080f - 720f)));
 
-        // Відстані по висоті (збільшено у 2 - 2.5 рази за вимогою, щоб кнопки не злипалися і не залазили одна на одну!)
-        // gapS: між інформаційними рядками (було 2px -> стало 6-8px)
-        // gapM: основний проміжний рядковий інтервал між кнопками (було 4px -> стало 10-13px)
-        // gapL: розділовий інтервал між логічними блоками (було 6px -> стало 16-20px)
-        int gapS = Math.round(6f + 2f * hRatio);
-        int gapM = Math.round(10f + 3f * hRatio);
-        int gapL = Math.round(16f + 4f * hRatio);
+        // Відстані по висоті (збалансовані інтервали, щоб елементи не налізали і все вміщалося від 720p до 1080p+)
+        int gapS = Math.round(5f + 2f * hRatio);
+        int gapM = Math.round(8f + 3f * hRatio);
+        int gapL = Math.round(12f + 4f * hRatio);
 
         // Висоти елементів меню
-        int titleH = Math.round(38f + 10f * hRatio);
-        int statusH = Math.round(24f + 5f * hRatio);
-        int masterBtnH = Math.round(42f + 8f * hRatio);
-        int colHeaderH = Math.round(26f + 5f * hRatio);
-        int btnH = Math.round(38f + 6f * hRatio);
-        int smallBtnH = Math.round(32f + 5f * hRatio);
-        int actionBtnH = Math.round(42f + 8f * hRatio);
-        int closeBottomH = Math.round(36f + 6f * hRatio);
+        int titleH = Math.round(36f + 8f * hRatio);
+        int statusH = Math.round(22f + 4f * hRatio);
+        int masterBtnH = Math.round(38f + 6f * hRatio);
+        int colHeaderH = Math.round(24f + 4f * hRatio);
+        int btnH = Math.round(34f + 6f * hRatio);
+        int smallBtnH = Math.round(28f + 4f * hRatio);
+        int actionBtnH = Math.round(38f + 6f * hRatio);
+        int closeBottomH = Math.round(32f + 5f * hRatio);
 
         int colGap = Math.round(12f + 6f * hRatio);
         int colW = (menuW - colGap) / 2;
@@ -571,13 +570,14 @@ public class Menu_AutoDevelop extends Menu {
 
         int padText = Math.max(8, pad * 2);
 
-        // Синхронізована висота 8 рядків колонок:
+        // Синхронізована висота 9 рядків колонок:
         // 1. Header (colHeaderH + gapM)
         // 2..5. 4 модулі / 4 пріоритети (4 * (btnH + gapM))
         // 6. Цільова екон. / Пресети (smallBtnH + gapM)
         // 7. Відсотки % / Резерв ходів (smallBtnH + gapM)
-        // 8. Сповіщення / Резерв золота (smallBtnH)
-        int syncedColumnsH = colHeaderH + gapM + (4 * (btnH + gapM)) + (smallBtnH + gapM) + (smallBtnH + gapM) + smallBtnH;
+        // 8. Авто-будівництво / Резерв золота (smallBtnH + gapM)
+        // 9. Сповіщення / Демобілізація армій (smallBtnH)
+        int syncedColumnsH = colHeaderH + gapM + (4 * (btnH + gapM)) + (3 * (smallBtnH + gapM)) + smallBtnH;
 
         int totalDialogH = (titleH + gapM)
                 + (statusH + gapS)
@@ -847,14 +847,14 @@ public class Menu_AutoDevelop extends Menu {
         this.idResMove6 = menuElements.size() - 1;
         rightY += smallBtnH + gapM;
 
-        // --- РЯДОК 8: ТУМБЛЕР СПОВІЩЕНЬ / РЕЗЕРВ ЗОЛОТА ---
-        String notifText = isUkr 
-                ? (AutoDevelopManager.showNotifications ? "[ВКЛ] Сповіщення про виконані дії" : "[ВИКЛ] Сповіщення про виконані дії")
-                : (AutoDevelopManager.showNotifications ? "[ON] Action Notifications" : "[OFF] Action Notifications");
-        DevButton notifBtn = new DevButton(fitText(notifText, colW - padText), -1, col1X, leftY, colW, smallBtnH, true, AutoDevelopManager.showNotifications, DevButton.ButtonType.TOGGLE);
-        menuElements.add(notifBtn);
-        this.idToggleNotifications = menuElements.size() - 1;
-        leftY += smallBtnH;
+        // --- РЯДОК 8: АВТО-БУДІВНИЦТВО / РЕЗЕРВ ЗОЛОТА ---
+        String buildText = isUkr 
+                ? (AutoDevelopManager.autoBuildInfrastructure ? "[ВКЛ] Будівництво (майстерні та наука)" : "[ВИКЛ] Будівництво (інфраструктура)")
+                : (AutoDevelopManager.autoBuildInfrastructure ? "[ON] Auto-Building (Workshops & Tech)" : "[OFF] Auto-Building");
+        DevButton buildBtn = new DevButton(fitText(buildText, colW - padText), -1, col1X, leftY, colW, smallBtnH, true, AutoDevelopManager.autoBuildInfrastructure, DevButton.ButtonType.TOGGLE);
+        menuElements.add(buildBtn);
+        this.idToggleAutoBuild = menuElements.size() - 1;
+        leftY += smallBtnH + gapM;
 
         // Резерв золота (підпис InfoCell, лише вибране значення має checked стиль)
         String resGoldTitle = isUkr ? "Золото:" : "Gold:";
@@ -875,6 +875,21 @@ public class Menu_AutoDevelop extends Menu {
         DevButton rG10k = new DevButton("10 000", -1, col2X + resLabelW + resBtnGap + resStep * 3, rightY, res4W, smallBtnH, true, AutoDevelopManager.minGoldReserve == 10000, DevButton.ButtonType.SELECTOR);
         menuElements.add(rG10k);
         this.idResGold10k = menuElements.size() - 1;
+        rightY += smallBtnH + gapM;
+
+        // --- РЯДОК 9: СПОВІЩЕННЯ / ДЕМОБІЛІЗАЦІЯ АРМІЙ В ТИЛУ ---
+        String notifText = isUkr 
+                ? (AutoDevelopManager.showNotifications ? "[ВКЛ] Сповіщення про виконані дії" : "[ВИКЛ] Сповіщення про виконані дії")
+                : (AutoDevelopManager.showNotifications ? "[ON] Action Notifications" : "[OFF] Action Notifications");
+        DevButton notifBtn = new DevButton(fitText(notifText, colW - padText), -1, col1X, leftY, colW, smallBtnH, true, AutoDevelopManager.showNotifications, DevButton.ButtonType.TOGGLE);
+        menuElements.add(notifBtn);
+        this.idToggleNotifications = menuElements.size() - 1;
+        leftY += smallBtnH;
+
+        String demobText = isUkr ? "Демобілізація армій в тилу" : "Demobilize Safe Armies";
+        DevButton demobBtn = new DevButton(fitText(demobText, colW - padText), -1, col2X, rightY, colW, smallBtnH, true, false, DevButton.ButtonType.ACTION);
+        menuElements.add(demobBtn);
+        this.idDemobilizeArmies = menuElements.size() - 1;
         rightY += smallBtnH;
 
         int columnsEndY = Math.max(leftY, rightY);
@@ -1002,6 +1017,34 @@ public class Menu_AutoDevelop extends Menu {
         if (iID == this.idEco150) {
             AutoDevelopManager.targetEcoPercentage = 150;
             AutoDevelopManager.saveConfig();
+            this.rebuild();
+            return;
+        }
+
+        // Авто-будівництво
+        if (iID == this.idToggleAutoBuild) {
+            AutoDevelopManager.autoBuildInfrastructure = !AutoDevelopManager.autoBuildInfrastructure;
+            AutoDevelopManager.saveConfig();
+            this.rebuild();
+            return;
+        }
+
+        // Демобілізація мирних тилових гарнізонів
+        if (iID == this.idDemobilizeArmies) {
+            int playerCivID = -1;
+            try {
+                if (CFG.core != null && CFG.core.getPlayer(CFG.PLAYER_TURN_ID) != null) {
+                    playerCivID = CFG.core.getPlayer(CFG.PLAYER_TURN_ID).getCivId();
+                }
+            } catch (Exception ignored) {
+            }
+            if (playerCivID > 0) {
+                AutoDevelopManager.demobilizeSafeArmies(playerCivID);
+                try {
+                    CFG.SFXManager.playSound(SFXManager.SFX_CLICK);
+                } catch (Exception ignored) {
+                }
+            }
             this.rebuild();
             return;
         }

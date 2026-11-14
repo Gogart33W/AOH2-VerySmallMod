@@ -4,6 +4,7 @@ import age.of.civilizations2.jakowski.lukasz.CFG;
 import age.of.civilizations2.jakowski.lukasz.Diplomacy.Festivals.Festival;
 import age.of.civilizations2.jakowski.lukasz.GameManager;
 import age.of.civilizations2.jakowski.lukasz.GameValues.GameValues;
+import age.of.civilizations2.jakowski.lukasz.MapA.BuildingsManager;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
@@ -15,10 +16,12 @@ import java.util.List;
 
 /**
  * AutoDevelopManager - комплексна автоматизація провінцій:
- * - Розвиток економіки
+ * - Розумний розвиток економіки (Smart ROI з урахуванням населення і приросту)
  * - Розвиток інфраструктури науки / технологій
  * - Проведення ярмарок для щастя
  * - Асиміляція провінцій для стабільності
+ * - Авто-будівництво інфраструктури (майстерні, бібліотеки)
+ * - Демобілізація мирних тилових гарнізонів
  * - Пріоритети, резерви та повна діагностика
  */
 public class AutoDevelopManager {
@@ -37,6 +40,13 @@ public class AutoDevelopManager {
     public static boolean autoInvestEconomy = true;
     public static boolean autoInvestDevelopment = true;
     public static boolean showNotifications = true;
+
+    // Авто-будівництво
+    public static boolean autoBuildInfrastructure = true;
+    public static boolean autoBuildWorkshops = true;
+    public static boolean autoBuildLibraries = true;
+    public static boolean autoBuildForts = false;
+    public static boolean smartRoi = true;
 
     // Пороги та цілі
     public static int targetEcoPercentage = 100; // цільова економіка: % від населення (дефолт 100%)
@@ -100,6 +110,16 @@ public class AutoDevelopManager {
                         minMovePointsReserve = Integer.parseInt(line.substring(21));
                     } else if (line.startsWith("showNotifications=")) {
                         showNotifications = Boolean.parseBoolean(line.substring(18));
+                    } else if (line.startsWith("buildInfrastructure=")) {
+                        autoBuildInfrastructure = Boolean.parseBoolean(line.substring(20));
+                    } else if (line.startsWith("buildWorkshops=")) {
+                        autoBuildWorkshops = Boolean.parseBoolean(line.substring(15));
+                    } else if (line.startsWith("buildLibraries=")) {
+                        autoBuildLibraries = Boolean.parseBoolean(line.substring(15));
+                    } else if (line.startsWith("buildForts=")) {
+                        autoBuildForts = Boolean.parseBoolean(line.substring(11));
+                    } else if (line.startsWith("smartRoi=")) {
+                        smartRoi = Boolean.parseBoolean(line.substring(9));
                     } else if (line.startsWith("priorities=")) {
                         String[] parts = line.substring(11).split(",");
                         if (parts.length == 4) {
@@ -124,6 +144,11 @@ public class AutoDevelopManager {
             writer.write("festival=" + autoFestival + "\n");
             writer.write("economy=" + autoInvestEconomy + "\n");
             writer.write("development=" + autoInvestDevelopment + "\n");
+            writer.write("buildInfrastructure=" + autoBuildInfrastructure + "\n");
+            writer.write("buildWorkshops=" + autoBuildWorkshops + "\n");
+            writer.write("buildLibraries=" + autoBuildLibraries + "\n");
+            writer.write("buildForts=" + autoBuildForts + "\n");
+            writer.write("smartRoi=" + smartRoi + "\n");
             writer.write("targetEcoPerc=" + targetEcoPercentage + "\n");
             writer.write("targetHappiness=" + targetHappiness + "\n");
             writer.write("targetStability=" + targetStability + "\n");
@@ -366,10 +391,25 @@ public class AutoDevelopManager {
                         }
                     }
 
-                    // Найбільший дефіцит економіки спочатку
+                    // SMART ROI: Сортуємо провінції за максимальною віддачею на інвестоване золото (ROI)
+                    // Провінції з високим населенням та низькою існуючою економікою мають найвищий мультиплікатор
                     Collections.sort(needEco, new Comparator<Integer>() {
                         @Override
                         public int compare(Integer p1, Integer p2) {
+                            if (smartRoi) {
+                                int pop1 = CFG.core.getProv(p1.intValue()).getPop().getPops();
+                                int pop2 = CFG.core.getProv(p2.intValue()).getPop().getPops();
+                                int cur1 = CFG.core.getProv(p1.intValue()).getEco() + CFG.core.getCiv(civID).isInvestOrganized_EconomyLeft(p1.intValue());
+                                int cur2 = CFG.core.getProv(p2.intValue()).getEco() + CFG.core.getCiv(civID).isInvestOrganized_EconomyLeft(p2.intValue());
+
+                                float growth1 = CFG.core.getProv(p1.intValue()).getGrowthRate_Pop();
+                                float growth2 = CFG.core.getProv(p2.intValue()).getGrowthRate_Pop();
+
+                                // ROI: приріст доходу на одиницю вартості інвестиції
+                                float roi1 = ((float)pop1 / (float)(cur1 + 50)) * (1.0f + growth1);
+                                float roi2 = ((float)pop2 / (float)(cur2 + 50)) * (1.0f + growth2);
+                                return Float.compare(roi2, roi1);
+                            }
                             int pop1 = CFG.core.getProv(p1.intValue()).getPop().getPops();
                             int pop2 = CFG.core.getProv(p2.intValue()).getPop().getPops();
                             int target1 = (int)((long)pop1 * targetEcoPercentage / 100L);
@@ -429,15 +469,13 @@ public class AutoDevelopManager {
                         }
                     }
 
-                    // Найбільший розрив з рівнем технологій спочатку
+                    // Пріоритет розвитку: провінції з найбільшим населенням
                     Collections.sort(needDev, new Comparator<Integer>() {
                         @Override
                         public int compare(Integer p1, Integer p2) {
-                            float cur1 = CFG.core.getProv(p1.intValue()).getDeveLvl() + CFG.core.getCiv(civID).isInvestOrganized_EconomyLeft_Development(p1.intValue());
-                            float cur2 = CFG.core.getProv(p2.intValue()).getDeveLvl() + CFG.core.getCiv(civID).isInvestOrganized_EconomyLeft_Development(p2.intValue());
-                            float gap1 = Math.max(0.0f, techLvl - cur1);
-                            float gap2 = Math.max(0.0f, techLvl - cur2);
-                            return Float.compare(gap2, gap1);
+                            int pop1 = CFG.core.getProv(p1.intValue()).getPop().getPops();
+                            int pop2 = CFG.core.getProv(p2.intValue()).getPop().getPops();
+                            return Integer.compare(pop2, pop1);
                         }
                     });
 
@@ -464,7 +502,13 @@ public class AutoDevelopManager {
                 }
             }
 
-            int totalActions = countAssimilate + countFestival + countEconomy + countDev;
+            // 5. АВТО-БУДІВНИЦТВО ІНФРАСТРУКТУРИ (МАЙСТЕРНІ ТА БІБЛІОТЕКИ)
+            int countBuildings = 0;
+            if (autoBuildInfrastructure) {
+                countBuildings = autoBuildBuildings(civID);
+            }
+
+            int totalActions = countAssimilate + countFestival + countEconomy + countDev + countBuildings;
 
             // Оновлюємо інтерфейс верхньої панелі та інформації про провінцію
             try {
@@ -493,7 +537,8 @@ public class AutoDevelopManager {
                         if (countAssimilate > 0) { sb.append(countAssimilate).append(" асим."); first = false; }
                         if (countFestival > 0) { if (!first) sb.append(", "); sb.append(countFestival).append(" ярм."); first = false; }
                         if (countEconomy > 0) { if (!first) sb.append(", "); sb.append(countEconomy).append(" екон."); first = false; }
-                        if (countDev > 0) { if (!first) sb.append(", "); sb.append(countDev).append(" розв."); }
+                        if (countDev > 0) { if (!first) sb.append(", "); sb.append(countDev).append(" розв."); first = false; }
+                        if (countBuildings > 0) { if (!first) sb.append(", "); sb.append(countBuildings).append(" споруд"); }
                         sb.append(") | ");
                         if (spentMove > 0) sb.append("-").append(CFG.getPrecision2(spentMove, 10)).append(" ходів ");
                         if (spentDiplo > 0) sb.append("-").append(CFG.getPrecision2(spentDiplo, 10)).append(" дипл. ");
@@ -505,7 +550,8 @@ public class AutoDevelopManager {
                         if (countAssimilate > 0) { sb.append(countAssimilate).append(" assim."); first = false; }
                         if (countFestival > 0) { if (!first) sb.append(", "); sb.append(countFestival).append(" fest."); first = false; }
                         if (countEconomy > 0) { if (!first) sb.append(", "); sb.append(countEconomy).append(" eco."); first = false; }
-                        if (countDev > 0) { if (!first) sb.append(", "); sb.append(countDev).append(" dev."); }
+                        if (countDev > 0) { if (!first) sb.append(", "); sb.append(countDev).append(" dev."); first = false; }
+                        if (countBuildings > 0) { if (!first) sb.append(", "); sb.append(countBuildings).append(" bld."); }
                         sb.append(") | ");
                         if (spentMove > 0) sb.append("-").append(CFG.getPrecision2(spentMove, 10)).append(" mov. ");
                         if (spentDiplo > 0) sb.append("-").append(CFG.getPrecision2(spentDiplo, 10)).append(" diplo ");
@@ -524,6 +570,156 @@ public class AutoDevelopManager {
             }
 
             return totalActions;
+        } catch (Exception ex) {
+            CFG.exceptionStack(ex);
+            return 0;
+        }
+    }
+
+    public static int autoBuildBuildings(int civID) {
+        if (!autoBuildInfrastructure) return 0;
+        int builtCount = 0;
+        try {
+            if (CFG.core == null || CFG.core.getCiv(civID) == null) return 0;
+            int numOfProvs = CFG.core.getCiv(civID).getNumOfProvs();
+            if (numOfProvs <= 0) return 0;
+
+            // 1. Майстерні (Workshops)
+            if (autoBuildWorkshops) {
+                int maxWorkshopLvl = BuildingsManager.getWorkshop_MaxLevel_CanBuild(civID);
+                List<Integer> workshopCandidates = new ArrayList<Integer>();
+                for (int i = 0; i < numOfProvs; i++) {
+                    int pID = CFG.core.getCiv(civID).getProvID(i);
+                    if (pID >= 0 && !CFG.core.getProv(pID).getSeaProv() && CFG.core.getProv(pID).getWastelandLvl() < 0 && !CFG.core.getProv(pID).isOccupied()) {
+                        if (CFG.core.getProv(pID).getLvlOfWorkshop() < maxWorkshopLvl) {
+                            workshopCandidates.add(pID);
+                        }
+                    }
+                }
+                Collections.sort(workshopCandidates, new Comparator<Integer>() {
+                    @Override
+                    public int compare(Integer p1, Integer p2) {
+                        return Integer.compare(CFG.core.getProv(p2.intValue()).getPop().getPops(), CFG.core.getProv(p1.intValue()).getPop().getPops());
+                    }
+                });
+                for (int pID : workshopCandidates) {
+                    int nextLvl = CFG.core.getProv(pID).getLvlOfWorkshop() + 1;
+                    int costGold = BuildingsManager.getWorkshop_BuildCost(nextLvl, pID);
+                    int costMove = BuildingsManager.getWorkshop_BuildMovementCost(nextLvl);
+                    if (CFG.core.getCiv(civID).getGold() - minGoldReserve < costGold) break;
+                    if (CFG.core.getCiv(civID).getMovemPoints() < costMove + minMovePointsReserve) break;
+                    if (BuildingsManager.constructWorkshop(pID, civID)) {
+                        builtCount++;
+                    }
+                }
+            }
+
+            // 2. Бібліотеки (Libraries)
+            if (autoBuildLibraries) {
+                int maxLibraryLvl = BuildingsManager.getLibrary_MaxLevel_CanBuild(civID);
+                List<Integer> libCandidates = new ArrayList<Integer>();
+                for (int i = 0; i < numOfProvs; i++) {
+                    int pID = CFG.core.getCiv(civID).getProvID(i);
+                    if (pID >= 0 && !CFG.core.getProv(pID).getSeaProv() && CFG.core.getProv(pID).getWastelandLvl() < 0 && !CFG.core.getProv(pID).isOccupied()) {
+                        if (CFG.core.getProv(pID).getLvlOfLibrary() < maxLibraryLvl) {
+                            libCandidates.add(pID);
+                        }
+                    }
+                }
+                Collections.sort(libCandidates, new Comparator<Integer>() {
+                    @Override
+                    public int compare(Integer p1, Integer p2) {
+                        return Integer.compare(CFG.core.getProv(p2.intValue()).getPop().getPops(), CFG.core.getProv(p1.intValue()).getPop().getPops());
+                    }
+                });
+                for (int pID : libCandidates) {
+                    int nextLvl = CFG.core.getProv(pID).getLvlOfLibrary() + 1;
+                    int costGold = BuildingsManager.getLibrary_BuildCost(nextLvl, pID);
+                    int costMove = BuildingsManager.getLibrary_BuildMovementCost(nextLvl);
+                    if (CFG.core.getCiv(civID).getGold() - minGoldReserve < costGold) break;
+                    if (CFG.core.getCiv(civID).getMovemPoints() < costMove + minMovePointsReserve) break;
+                    if (BuildingsManager.constructLibrary(pID, civID)) {
+                        builtCount++;
+                    }
+                }
+            }
+        } catch (Exception ex) {
+            CFG.exceptionStack(ex);
+        }
+        return builtCount;
+    }
+
+    public static int demobilizeSafeArmies(int civID) {
+        try {
+            if (CFG.core == null || CFG.core.getCiv(civID) == null) return 0;
+            int numOfProvs = CFG.core.getCiv(civID).getNumOfProvs();
+            if (numOfProvs <= 0) return 0;
+
+            int totalDisbanded = 0;
+            final int SAFE_GARRISON = 500;
+
+            for (int i = 0; i < numOfProvs; i++) {
+                int pID = CFG.core.getCiv(civID).getProvID(i);
+                if (pID < 0 || CFG.core.getProv(pID).getSeaProv() || CFG.core.getProv(pID).isOccupied()) continue;
+
+                int army = CFG.core.getProv(pID).getArmyCivID1(civID);
+                if (army <= SAFE_GARRISON) continue;
+
+                // Перевірка, чи це глибокий безпечний тил (всі сусіди дружні / власні)
+                boolean isBorder = false;
+                int neighSize = CFG.core.getProv(pID).getNeighProvincesSize();
+                for (int j = 0; j < neighSize; j++) {
+                    int nID = CFG.core.getProv(pID).getNeighProvinces(j);
+                    if (nID < 0 || CFG.core.getProv(nID).getSeaProv() || CFG.core.getProv(nID).getWastelandLvl() >= 0) continue;
+                    int nCiv = CFG.core.getProv(nID).getCivId();
+                    if (nCiv > 0 && nCiv != civID) {
+                        try {
+                            if (CFG.core.getCiv(civID).isAtWarWithCivs != null && CFG.core.getCiv(civID).isAtWarWithCivs.contains(Integer.valueOf(nCiv))) {
+                                isBorder = true;
+                                break;
+                            }
+                            if (CFG.core.getCiv(civID).getRelationD(nCiv) < 0.0f) {
+                                isBorder = true;
+                                break;
+                            }
+                        } catch (Exception ignored) {
+                            isBorder = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (!isBorder) {
+                    int toDisband = army - SAFE_GARRISON;
+                    CFG.gameAction.disbandArmy(pID, toDisband, civID);
+                    int after = CFG.core.getProv(pID).getArmyCivID1(civID);
+                    totalDisbanded += Math.max(0, army - after);
+                }
+            }
+
+            if (CFG.menus != null) {
+                CFG.menus.updateInGameTopAll(civID);
+            }
+
+            boolean isUkr = (CFG.lang != null && CFG.lang.get("LANGUAGENAME") != null)
+                    ? CFG.lang.get("LANGUAGENAME").equalsIgnoreCase("Українська")
+                    : true;
+
+            if (totalDisbanded > 0) {
+                String msg = isUkr 
+                        ? ("Демобілізовано " + CFG.getNumberWthSpaces("" + totalDisbanded) + " вояків у безпечному тилу. Витрати скарбниці суттєво знижено!")
+                        : ("Demobilized " + CFG.getNumberWthSpaces("" + totalDisbanded) + " troops in safe interior provinces. Upkeep reduced!");
+                CFG.toastM.addM(msg, CFG.COLOR_POSITIVE);
+                CFG.toastM.setTimeInView(4000);
+            } else {
+                String msg = isUkr 
+                        ? "У внутрішніх тилових провінціях немає зайвої армії (залишено гарнізони по 500 вояків)."
+                        : "No excess armies found in interior provinces (garrisons of 500 kept).";
+                CFG.toastM.addM(msg, CFG.COLOR_GOLD);
+                CFG.toastM.setTimeInView(3500);
+            }
+
+            return totalDisbanded;
         } catch (Exception ex) {
             CFG.exceptionStack(ex);
             return 0;
