@@ -184,6 +184,44 @@ extends Menu {
             });
             nPosY += tempElemH;
         }
+        if (CFG.getActiveCivInfoId() == CFG.core.getPlayer(CFG.PLAYER_TURN_ID).getCivId()) {
+            boolean isUkr = CFG.lang.get("LANGUAGENAME").equalsIgnoreCase("Українська");
+            String autoTitle = isUkr ? "⚡ Автоматизація провінцій" : "⚡ Province Automation";
+            menuElems.add(new Button_DiplomacyAction(Images.economy, autoTitle, 0, 0, nPosY, menuW - 2, tempElemH, true) {
+                @Override
+                public void drawMEH2(SpriteBatch oSB, int iTranslateX, int iTranslateY, boolean isActive) {
+                    if (this.menuElemHover != null) {
+                        this.menuElemHover.drawAlwaysBelowMEH(oSB, Menu_InGame_Civ_Actions.this.getPosX() + this.getWidthE() + Core.PADDING + iTranslateX, Touch.getMousePosY());
+                    }
+                }
+
+                @Override
+                public void actionElem(int iID) {
+                    age.of.civilizations2.jakowski.lukasz.Menus.AutoDevelop.Menu_AutoDevelop.open();
+                }
+
+                @Override
+                public void buildElemHover() {
+                    boolean isUkr = CFG.lang.get("LANGUAGENAME").equalsIgnoreCase("Українська");
+                    ArrayList<MEHover_2E> nElements = new ArrayList<MEHover_2E>();
+                    ArrayList<age.of.civilizations2.jakowski.lukasz.MenuE_HoverP.ME_Hover_2Type> nData = new ArrayList<age.of.civilizations2.jakowski.lukasz.MenuE_HoverP.ME_Hover_2Type>();
+                    nData.add(new ME_Hover_2Type_Text_Big(isUkr ? "Автоматизація держави" : "Province Automation", CFG.COLOR_HOVER_TITLE));
+                    nData.add(new ME_Hover_2Type_Image_Big(Images.economy, CFG.PADD, 0));
+                    nElements.add(new MEHover_2E(nData));
+                    nData.clear();
+                    nData.add(new ME_Hover_2Type_Space());
+                    nElements.add(new MEHover_2E(nData));
+                    nData.clear();
+                    nData.add(new ME_Hover_2Type_TextDesc(isUkr 
+                        ? "Автоматичне управління провінціями: асиміляція, ярмарки, інвестиції в економіку та розвиток досліджень за пріоритетами."
+                        : "Automatic province management: assimilation, festivals, economy, and research development by priority."));
+                    nElements.add(new MEHover_2E(nData));
+                    nData.clear();
+                    this.menuElemHover = new ME_Hover_v2(nElements);
+                }
+            });
+            nPosY += tempElemH;
+        }
         if (!CFG.core.getCivsAtWar(CFG.core.getPlayer(CFG.PLAYER_TURN_ID).getCivId(), CFG.getActiveCivInfoId())) {
             int i2;
             if (CFG.core.getCivTruce(CFG.core.getPlayer(CFG.PLAYER_TURN_ID).getCivId(), CFG.getActiveCivInfoId()) > 0) {

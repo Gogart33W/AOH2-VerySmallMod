@@ -4,6 +4,7 @@ import age.of.civilizations2.jakowski.lukasz.Button.Button_Transparent;
 import age.of.civilizations2.jakowski.lukasz.Button.Classic.Button_Classic;
 import age.of.civilizations2.jakowski.lukasz.Button.MenuElemUI;
 import age.of.civilizations2.jakowski.lukasz.CFG;
+import age.of.civilizations2.jakowski.lukasz.Civilization;
 import age.of.civilizations2.jakowski.lukasz.IMGManager;
 import age.of.civilizations2.jakowski.lukasz.Images;
 import age.of.civilizations2.jakowski.lukasz.Menu;
@@ -14,28 +15,62 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Menu_AutoDevelop - повноекранне вікно налаштування та запуску автоматичного розвитку провінцій.
+ * Menu_AutoDevelop - сучасне професійне вікно налаштування та запуску автоматичного розвитку держави.
  */
 public class Menu_AutoDevelop extends Menu {
     private static int autoDevelopMenuID = -1;
     private static Menu_AutoDevelop instance = null;
 
-    private int idTitle = -1;
+    // IDs of UI elements
     private int idCloseTop = -1;
     private int idToggleMaster = -1;
-    private int idToggleEco = -1;
+
+    // Priorities
+    private int[] idPrioRow = new int[4];
+    private int[] idPrioUp = new int[4];
+    private int[] idPrioDown = new int[4];
+    private int idPrioPresetBalanced = -1;
+    private int idPrioPresetEconomy = -1;
+    private int idPrioPresetStability = -1;
+
+    // Reserves
+    private int idResMove0 = -1;
+    private int idResMove2 = -1;
+    private int idResMove4 = -1;
+    private int idResMove6 = -1;
+
+    private int idResGold0 = -1;
+    private int idResGold1k = -1;
+    private int idResGold5k = -1;
+    private int idResGold10k = -1;
+
+    // Modules
+    private int idToggleAssimilate = -1;
+    private int idStab90 = -1;
+    private int idStab95 = -1;
+    private int idStab100 = -1;
+
+    private int idToggleFestival = -1;
+    private int idHappi70 = -1;
+    private int idHappi80 = -1;
+    private int idHappi90 = -1;
+
+    private int idToggleEconomy = -1;
     private int idEcoPercLabel = -1;
-    private int idEcoPercMinus50 = -1;
-    private int idEcoPercMinus10 = -1;
-    private int idEcoPercPlus10 = -1;
-    private int idEcoPercPlus50 = -1;
-    private int idEcoPreset80 = -1;
-    private int idEcoPreset100 = -1;
-    private int idEcoPreset120 = -1;
-    private int idEcoPreset150 = -1;
-    private int idEcoPreset200 = -1;
-    private int idToggleDev = -1;
-    private int idToggleNotify = -1;
+    private int idEcoM50 = -1;
+    private int idEcoM10 = -1;
+    private int idEcoP10 = -1;
+    private int idEcoP50 = -1;
+    private int idEco80 = -1;
+    private int idEco100 = -1;
+    private int idEco120 = -1;
+    private int idEco150 = -1;
+    private int idEco200 = -1;
+
+    private int idToggleDevelopment = -1;
+    private int idToggleNotifications = -1;
+
+    // Actions
     private int idRunNow = -1;
     private int idCloseBottom = -1;
     private int idCatchAll = -1;
@@ -62,150 +97,339 @@ public class Menu_AutoDevelop extends Menu {
     }
 
     public static void close() {
-        close(true);
-    }
-
-    public static void close(boolean reopenOptions) {
         if (instance != null) {
             instance.setVisibleM(false);
-        }
-        if (reopenOptions) {
-            CFG.menus.setVisible_InGame_Options(true);
         }
     }
 
     public void rebuild() {
         List<MenuElemUI> menuElements = new ArrayList<MenuElemUI>();
 
-        int btnW = Math.min((int)(CFG.CIV_INFO_MENU_WIDTH * 1.8f), CFG.GAMEWIDTH - CFG.PADD * 6);
-        int btnX = CFG.GAMEWIDTH / 2 - btnW / 2;
-        int btnH = CFG.BUTTON_H;
-        int titleH = CFG.BUTTON_H * 4 / 5;
-        int curY = CFG.PADD * 3;
-
         boolean isUkr = CFG.lang.get("LANGUAGENAME").equalsIgnoreCase("Українська");
 
-        // 1. Заголовок
-        String titleText = isUkr ? "АВТОМАТИЧНИЙ РОЗВИТОК ПРОВІНЦІЙ" : "AUTOMATIC PROVINCE DEVELOPMENT";
-        TextTitleStyle titleElem = new TextTitleStyle(titleText, -1, btnX, curY, btnW, titleH);
+        int menuW = Math.min((int)(CFG.CIV_INFO_MENU_WIDTH * 2.5f), CFG.GAMEWIDTH - CFG.PADD * 4);
+        int startX = (CFG.GAMEWIDTH - menuW) / 2;
+        int btnH = Math.max(CFG.BUTTON_H * 7 / 10, CFG.TEXT_HEIGHT_DEFAULT + CFG.PADD * 2);
+        int smallBtnH = Math.max(CFG.BUTTON_H * 3 / 5, CFG.TEXT_HEIGHT_DEFAULT + CFG.PADD);
+        int colGap = CFG.PADD * 2;
+        int colW = (menuW - colGap) / 2;
+        int col1X = startX;
+        int col2X = startX + colW + colGap;
+
+        int curY = CFG.PADD * 2;
+
+        // 1. Верхній рядок: Заголовок та кнопка закриття
+        int titleH = btnH * 9 / 10;
+        int closeBtnW = btnH * 3;
+        String titleText = isUkr ? "АВТОМАТИЗАЦІЯ ДЕРЖАВИ ТА ПРОВІНЦІЙ" : "STATE & PROVINCE AUTOMATION";
+        TextTitleStyle titleElem = new TextTitleStyle(titleText, -1, startX, curY, menuW - closeBtnW - CFG.PADD, titleH);
         menuElements.add(titleElem);
-        this.idTitle = menuElements.size() - 1;
-        curY += titleH + CFG.PADD * 2;
 
-        // 2. Кнопка закриття зверху
-        String closeTextTop = isUkr ? "✕ Повернутися до гри (Закрити)" : "✕ Return to Game (Close)";
-        Button_Classic closeBtnTop = new Button_Classic(closeTextTop, -1, btnX, curY, btnW, btnH, true);
-        menuElements.add(closeBtnTop);
+        Button_Classic closeTopBtn = new Button_Classic("✕ " + (isUkr ? "Закрити" : "Close"), -1, startX + menuW - closeBtnW, curY, closeBtnW, titleH, true);
+        menuElements.add(closeTopBtn);
         this.idCloseTop = menuElements.size() - 1;
-        curY += btnH + CFG.PADD * 2;
+        curY += titleH + CFG.PADD;
 
-        // 3. Головна галочка: Увімкнути/Вимкнути авто-розвиток
+        // 2. Рядок статистики гравця (поточні ресурси)
+        int playerCivID = -1;
+        try {
+            if (CFG.core != null && CFG.core.getPlayer(CFG.PLAYER_TURN_ID) != null) {
+                playerCivID = CFG.core.getPlayer(CFG.PLAYER_TURN_ID).getCivId();
+            }
+        } catch (Exception ignored) {
+        }
+
+        String statsText;
+        if (playerCivID > 0 && CFG.core.getCiv(playerCivID) != null) {
+            Civilization pCiv = CFG.core.getCiv(playerCivID);
+            float movPts = (float)pCiv.getMovemPoints() / 10.0f;
+            float dipPts = (float)pCiv.getDiploPoints() / 10.0f;
+            long gold = pCiv.getGold();
+            int provs = pCiv.getNumOfProvs();
+            statsText = isUkr
+                    ? ("Держава: " + pCiv.getCivName() + "  |  Очки ходів: " + CFG.getPrecision2(movPts, 10) + "  |  Дипломатія: " + CFG.getPrecision2(dipPts, 10) + "  |  Золото: " + gold + "  |  Провінцій: " + provs)
+                    : ("Nation: " + pCiv.getCivName() + "  |  Movement: " + CFG.getPrecision2(movPts, 10) + "  |  Diplo: " + CFG.getPrecision2(dipPts, 10) + "  |  Gold: " + gold + "  |  Provinces: " + provs);
+        } else {
+            statsText = isUkr ? "Керування автоматичним розвитком імперії" : "Automatic empire development management";
+        }
+        Button_Classic statsBar = new Button_Classic(statsText, -1, startX, curY, menuW, smallBtnH, false);
+        menuElements.add(statsBar);
+        curY += smallBtnH + CFG.PADD * 2;
+
+        int columnsStartY = curY;
+
+        // ==========================================
+        // ЛІВА КОЛОНКА: СТРАТЕГІЯ, ПРІОРИТЕТИ, РЕЗЕРВИ
+        // ==========================================
+        int leftY = columnsStartY;
+
+        // Головний перемикач
         String masterText = isUkr 
-                ? (AutoDevelopManager.autoDevelopEnabled ? "[✓] Авто-розвиток: УВІМКНЕНО (щоходу)" : "[  ] Авто-розвиток: ВИМКНЕНО")
-                : (AutoDevelopManager.autoDevelopEnabled ? "[✓] Auto-Develop: ENABLED (every turn)" : "[  ] Auto-Develop: DISABLED");
-        Button_Classic masterBtn = new Button_Classic(masterText, -1, btnX, curY, btnW, btnH, true, AutoDevelopManager.autoDevelopEnabled);
+                ? (AutoDevelopManager.autoDevelopEnabled ? "[✓] АВТО-УПРАВЛІННЯ: УВІМКНЕНО (ЩОХОДУ)" : "[  ] АВТО-УПРАВЛІННЯ: ВИМКНЕНО")
+                : (AutoDevelopManager.autoDevelopEnabled ? "[✓] AUTO-MANAGEMENT: ENABLED (EVERY TURN)" : "[  ] AUTO-MANAGEMENT: DISABLED");
+        Button_Classic masterBtn = new Button_Classic(masterText, -1, col1X, leftY, colW, btnH, true, AutoDevelopManager.autoDevelopEnabled);
         menuElements.add(masterBtn);
         this.idToggleMaster = menuElements.size() - 1;
-        curY += btnH + CFG.PADD * 2;
+        leftY += btnH + CFG.PADD * 2;
 
-        // 4. Галочка: Авто-інвестиції в економіку
-        String ecoText = isUkr
-                ? (AutoDevelopManager.autoInvestEconomy ? "[✓] Авто-інвестиції в економіку" : "[  ] Авто-інвестиції в економіку")
-                : (AutoDevelopManager.autoInvestEconomy ? "[✓] Auto-Invest in Economy" : "[  ] Auto-Invest in Economy");
-        Button_Classic ecoBtn = new Button_Classic(ecoText, -1, btnX, curY, btnW, btnH, true, AutoDevelopManager.autoInvestEconomy);
+        // Заголовок пріоритетів
+        String prioHeader = isUkr ? "--- ПРІОРИТЕТИ ВИКОНАННЯ (1 -> 4) ---" : "--- EXECUTION PRIORITIES (1 -> 4) ---";
+        Button_Classic prioHeadElem = new Button_Classic(prioHeader, -1, col1X, leftY, colW, smallBtnH, false);
+        menuElements.add(prioHeadElem);
+        leftY += smallBtnH + CFG.PADD;
+
+        // 4 рядки пріоритетів з кнопками [▲] та [▼]
+        int upDownW = btnH * 9 / 10;
+        int prioNameW = colW - (upDownW + CFG.PADD) * 2;
+
+        for (int i = 0; i < 4; i++) {
+            int prioType = AutoDevelopManager.priorities[i];
+            String name = AutoDevelopManager.getPriorityName(prioType, isUkr);
+            String rowText = "[ " + (i + 1) + " ] " + name;
+
+            // Кнопка назви пріоритету
+            Button_Classic prioBtn = new Button_Classic(rowText, -1, col1X, leftY, prioNameW, btnH, true);
+            menuElements.add(prioBtn);
+            this.idPrioRow[i] = menuElements.size() - 1;
+
+            // Кнопка [▲]
+            boolean canUp = (i > 0);
+            Button_Classic upBtn = new Button_Classic("▲", -1, col1X + prioNameW + CFG.PADD, leftY, upDownW, btnH, canUp);
+            menuElements.add(upBtn);
+            this.idPrioUp[i] = menuElements.size() - 1;
+
+            // Кнопка [▼]
+            boolean canDown = (i < 3);
+            Button_Classic downBtn = new Button_Classic("▼", -1, col1X + prioNameW + CFG.PADD + upDownW + CFG.PADD, leftY, upDownW, btnH, canDown);
+            menuElements.add(downBtn);
+            this.idPrioDown[i] = menuElements.size() - 1;
+
+            leftY += btnH + CFG.PADD;
+        }
+
+        // Пресети пріоритетів
+        int pPresetW = (colW - CFG.PADD * 2) / 3;
+        Button_Classic pBal = new Button_Classic(isUkr ? "Баланс" : "Balanced", -1, col1X, leftY, pPresetW, smallBtnH, true);
+        menuElements.add(pBal);
+        this.idPrioPresetBalanced = menuElements.size() - 1;
+
+        Button_Classic pEco = new Button_Classic(isUkr ? "Економіка" : "Economy", -1, col1X + pPresetW + CFG.PADD, leftY, pPresetW, smallBtnH, true);
+        menuElements.add(pEco);
+        this.idPrioPresetEconomy = menuElements.size() - 1;
+
+        Button_Classic pStab = new Button_Classic(isUkr ? "Стабільність" : "Stability", -1, col1X + (pPresetW + CFG.PADD) * 2, leftY, pPresetW, smallBtnH, true);
+        menuElements.add(pStab);
+        this.idPrioPresetStability = menuElements.size() - 1;
+        leftY += smallBtnH + CFG.PADD * 2;
+
+        // Заголовок резервів
+        String resHeader = isUkr ? "--- ЗАХИСНІ РЕЗЕРВИ РЕСУРСІВ ---" : "--- RESOURCE SAFETY RESERVES ---";
+        Button_Classic resHeadElem = new Button_Classic(resHeader, -1, col1X, leftY, colW, smallBtnH, false);
+        menuElements.add(resHeadElem);
+        leftY += smallBtnH + CFG.PADD;
+
+        // Резерв очок ходів
+        float moveResVal = (float)AutoDevelopManager.minMovePointsReserve / 10.0f;
+        String moveResText = isUkr ? ("Не витрачати ходи: " + moveResVal + " (залишати для армії)") : ("Keep Move Points: " + moveResVal + " (for army)");
+        Button_Classic moveResLabel = new Button_Classic(moveResText, -1, col1X, leftY, colW, smallBtnH, false);
+        menuElements.add(moveResLabel);
+        leftY += smallBtnH + CFG.PADD;
+
+        int m4W = (colW - CFG.PADD * 3) / 4;
+        Button_Classic rM0 = new Button_Classic("0.0", -1, col1X, leftY, m4W, smallBtnH, true, AutoDevelopManager.minMovePointsReserve == 0);
+        menuElements.add(rM0);
+        this.idResMove0 = menuElements.size() - 1;
+
+        Button_Classic rM2 = new Button_Classic("2.0", -1, col1X + m4W + CFG.PADD, leftY, m4W, smallBtnH, true, AutoDevelopManager.minMovePointsReserve == 20);
+        menuElements.add(rM2);
+        this.idResMove2 = menuElements.size() - 1;
+
+        Button_Classic rM4 = new Button_Classic("4.0", -1, col1X + (m4W + CFG.PADD) * 2, leftY, m4W, smallBtnH, true, AutoDevelopManager.minMovePointsReserve == 40);
+        menuElements.add(rM4);
+        this.idResMove4 = menuElements.size() - 1;
+
+        Button_Classic rM6 = new Button_Classic("6.0", -1, col1X + (m4W + CFG.PADD) * 3, leftY, m4W, smallBtnH, true, AutoDevelopManager.minMovePointsReserve == 60);
+        menuElements.add(rM6);
+        this.idResMove6 = menuElements.size() - 1;
+        leftY += smallBtnH + CFG.PADD;
+
+        // Резерв скарбниці (золото)
+        String goldResText = isUkr ? ("Резерв скарбниці: " + AutoDevelopManager.minGoldReserve + " золота") : ("Treasury Reserve: " + AutoDevelopManager.minGoldReserve + " gold");
+        Button_Classic goldResLabel = new Button_Classic(goldResText, -1, col1X, leftY, colW, smallBtnH, false);
+        menuElements.add(goldResLabel);
+        leftY += smallBtnH + CFG.PADD;
+
+        Button_Classic rG0 = new Button_Classic("0", -1, col1X, leftY, m4W, smallBtnH, true, AutoDevelopManager.minGoldReserve == 0);
+        menuElements.add(rG0);
+        this.idResGold0 = menuElements.size() - 1;
+
+        Button_Classic rG1k = new Button_Classic("1 000", -1, col1X + m4W + CFG.PADD, leftY, m4W, smallBtnH, true, AutoDevelopManager.minGoldReserve == 1000);
+        menuElements.add(rG1k);
+        this.idResGold1k = menuElements.size() - 1;
+
+        Button_Classic rG5k = new Button_Classic("5 000", -1, col1X + (m4W + CFG.PADD) * 2, leftY, m4W, smallBtnH, true, AutoDevelopManager.minGoldReserve == 5000);
+        menuElements.add(rG5k);
+        this.idResGold5k = menuElements.size() - 1;
+
+        Button_Classic rG10k = new Button_Classic("10 000", -1, col1X + (m4W + CFG.PADD) * 3, leftY, m4W, smallBtnH, true, AutoDevelopManager.minGoldReserve == 10000);
+        menuElements.add(rG10k);
+        this.idResGold10k = menuElements.size() - 1;
+        leftY += smallBtnH + CFG.PADD;
+
+        // ==========================================
+        // ПРАВА КОЛОНКА: МОДУЛІ ТА ПАРАМЕТРИ
+        // ==========================================
+        int rightY = columnsStartY;
+
+        // Заголовок модулів
+        String modHeader = isUkr ? "--- МОДУЛІ АВТОМАТИЗАЦІЇ ---" : "--- AUTOMATION MODULES ---";
+        Button_Classic modHeadElem = new Button_Classic(modHeader, -1, col2X, rightY, colW, smallBtnH, false);
+        menuElements.add(modHeadElem);
+        rightY += smallBtnH + CFG.PADD;
+
+        // Модуль 1: Асиміляція
+        String assiText = isUkr 
+                ? (AutoDevelopManager.autoAssimilate ? "[✓] Асиміляція провінцій" : "[  ] Асиміляція провінцій")
+                : (AutoDevelopManager.autoAssimilate ? "[✓] Province Assimilation" : "[  ] Province Assimilation");
+        Button_Classic assiBtn = new Button_Classic(assiText, -1, col2X, rightY, colW, btnH, true, AutoDevelopManager.autoAssimilate);
+        menuElements.add(assiBtn);
+        this.idToggleAssimilate = menuElements.size() - 1;
+        rightY += btnH + CFG.PADD;
+
+        int s3W = (colW - CFG.PADD * 2) / 3;
+        Button_Classic stab90 = new Button_Classic(isUkr ? "< 90% стаб." : "< 90% stab.", -1, col2X, rightY, s3W, smallBtnH, true, AutoDevelopManager.targetStability == 90);
+        menuElements.add(stab90);
+        this.idStab90 = menuElements.size() - 1;
+
+        Button_Classic stab95 = new Button_Classic(isUkr ? "< 95% стаб." : "< 95% stab.", -1, col2X + s3W + CFG.PADD, rightY, s3W, smallBtnH, true, AutoDevelopManager.targetStability == 95);
+        menuElements.add(stab95);
+        this.idStab95 = menuElements.size() - 1;
+
+        Button_Classic stab100 = new Button_Classic(isUkr ? "< 100% стаб." : "< 100% stab.", -1, col2X + (s3W + CFG.PADD) * 2, rightY, s3W, smallBtnH, true, AutoDevelopManager.targetStability == 100);
+        menuElements.add(stab100);
+        this.idStab100 = menuElements.size() - 1;
+        rightY += smallBtnH + CFG.PADD * 2;
+
+        // Модуль 2: Ярмарки
+        String festText = isUkr 
+                ? (AutoDevelopManager.autoFestival ? "[✓] Проведення ярмарок (щастя)" : "[  ] Проведення ярмарок (щастя)")
+                : (AutoDevelopManager.autoFestival ? "[✓] Organize Festivals (happiness)" : "[  ] Organize Festivals (happiness)");
+        Button_Classic festBtn = new Button_Classic(festText, -1, col2X, rightY, colW, btnH, true, AutoDevelopManager.autoFestival);
+        menuElements.add(festBtn);
+        this.idToggleFestival = menuElements.size() - 1;
+        rightY += btnH + CFG.PADD;
+
+        Button_Classic hap70 = new Button_Classic(isUkr ? "< 70% щастя" : "< 70% hap.", -1, col2X, rightY, s3W, smallBtnH, true, AutoDevelopManager.targetHappiness == 70);
+        menuElements.add(hap70);
+        this.idHappi70 = menuElements.size() - 1;
+
+        Button_Classic hap80 = new Button_Classic(isUkr ? "< 80% щастя" : "< 80% hap.", -1, col2X + s3W + CFG.PADD, rightY, s3W, smallBtnH, true, AutoDevelopManager.targetHappiness == 80);
+        menuElements.add(hap80);
+        this.idHappi80 = menuElements.size() - 1;
+
+        Button_Classic hap90 = new Button_Classic(isUkr ? "< 90% щастя" : "< 90% hap.", -1, col2X + (s3W + CFG.PADD) * 2, rightY, s3W, smallBtnH, true, AutoDevelopManager.targetHappiness == 90);
+        menuElements.add(hap90);
+        this.idHappi90 = menuElements.size() - 1;
+        rightY += smallBtnH + CFG.PADD * 2;
+
+        // Модуль 3: Економіка
+        String ecoText = isUkr 
+                ? (AutoDevelopManager.autoInvestEconomy ? "[✓] Розвиток економіки" : "[  ] Розвиток економіки")
+                : (AutoDevelopManager.autoInvestEconomy ? "[✓] Economy Investments" : "[  ] Economy Investments");
+        Button_Classic ecoBtn = new Button_Classic(ecoText, -1, col2X, rightY, colW, btnH, true, AutoDevelopManager.autoInvestEconomy);
         menuElements.add(ecoBtn);
-        this.idToggleEco = menuElements.size() - 1;
-        curY += btnH + CFG.PADD;
+        this.idToggleEconomy = menuElements.size() - 1;
+        rightY += btnH + CFG.PADD;
 
-        // 5. Індикатор цільової економіки (% від населення)
         int samplePop = 100000;
         int sampleTarget = (int)((long)samplePop * AutoDevelopManager.targetEcoPercentage / 100L);
         String percText = isUkr
-                ? ("Цільова економіка: " + AutoDevelopManager.targetEcoPercentage + "% населення (100к нас. -> " + (sampleTarget / 1000) + "к екон.)")
-                : ("Target Economy: " + AutoDevelopManager.targetEcoPercentage + "% of pop (100k pop -> " + (sampleTarget / 1000) + "k eco)");
-        Button_Classic percInfo = new Button_Classic(percText, -1, btnX, curY, btnW, btnH * 4 / 5, false);
+                ? ("Ціль: " + AutoDevelopManager.targetEcoPercentage + "% населення (100к нас. -> " + (sampleTarget / 1000) + "к екон.)")
+                : ("Target: " + AutoDevelopManager.targetEcoPercentage + "% pop (100k pop -> " + (sampleTarget / 1000) + "k eco)");
+        Button_Classic percInfo = new Button_Classic(percText, -1, col2X, rightY, colW, smallBtnH, false);
         menuElements.add(percInfo);
         this.idEcoPercLabel = menuElements.size() - 1;
-        curY += btnH * 4 / 5 + CFG.PADD;
+        rightY += smallBtnH + CFG.PADD;
 
-        // 6. Рядок регулювання цільового % (-50%, -10%, +10%, +50%)
-        int gap = CFG.PADD;
-        int bW4 = (btnW - gap * 3) / 4;
-        
-        Button_Classic btnM50 = new Button_Classic("-50%", -1, btnX, curY, bW4, btnH, true);
+        // Рядок кроків +/-
+        int bW4 = (colW - CFG.PADD * 3) / 4;
+        Button_Classic btnM50 = new Button_Classic("-50%", -1, col2X, rightY, bW4, smallBtnH, true);
         menuElements.add(btnM50);
-        this.idEcoPercMinus50 = menuElements.size() - 1;
+        this.idEcoM50 = menuElements.size() - 1;
 
-        Button_Classic btnM10 = new Button_Classic("-10%", -1, btnX + (bW4 + gap), curY, bW4, btnH, true);
+        Button_Classic btnM10 = new Button_Classic("-10%", -1, col2X + bW4 + CFG.PADD, rightY, bW4, smallBtnH, true);
         menuElements.add(btnM10);
-        this.idEcoPercMinus10 = menuElements.size() - 1;
+        this.idEcoM10 = menuElements.size() - 1;
 
-        Button_Classic btnP10 = new Button_Classic("+10%", -1, btnX + (bW4 + gap) * 2, curY, bW4, btnH, true);
+        Button_Classic btnP10 = new Button_Classic("+10%", -1, col2X + (bW4 + CFG.PADD) * 2, rightY, bW4, smallBtnH, true);
         menuElements.add(btnP10);
-        this.idEcoPercPlus10 = menuElements.size() - 1;
+        this.idEcoP10 = menuElements.size() - 1;
 
-        Button_Classic btnP50 = new Button_Classic("+50%", -1, btnX + (bW4 + gap) * 3, curY, bW4, btnH, true);
+        Button_Classic btnP50 = new Button_Classic("+50%", -1, col2X + (bW4 + CFG.PADD) * 3, rightY, bW4, smallBtnH, true);
         menuElements.add(btnP50);
-        this.idEcoPercPlus50 = menuElements.size() - 1;
-        curY += btnH + CFG.PADD;
+        this.idEcoP50 = menuElements.size() - 1;
+        rightY += smallBtnH + CFG.PADD;
 
-        // 7. Рядок готових пресетів (80%, 100%, 120%, 150%, 200%)
-        int bW5 = (btnW - gap * 4) / 5;
-        
-        Button_Classic p80 = new Button_Classic("80%", -1, btnX, curY, bW5, btnH * 3 / 4, true);
+        // Пресети економіки
+        int bW5 = (colW - CFG.PADD * 4) / 5;
+        Button_Classic p80 = new Button_Classic("80%", -1, col2X, rightY, bW5, smallBtnH, true, AutoDevelopManager.targetEcoPercentage == 80);
         menuElements.add(p80);
-        this.idEcoPreset80 = menuElements.size() - 1;
+        this.idEco80 = menuElements.size() - 1;
 
-        Button_Classic p100 = new Button_Classic("100%", -1, btnX + (bW5 + gap), curY, bW5, btnH * 3 / 4, true);
+        Button_Classic p100 = new Button_Classic("100%", -1, col2X + bW5 + CFG.PADD, rightY, bW5, smallBtnH, true, AutoDevelopManager.targetEcoPercentage == 100);
         menuElements.add(p100);
-        this.idEcoPreset100 = menuElements.size() - 1;
+        this.idEco100 = menuElements.size() - 1;
 
-        Button_Classic p120 = new Button_Classic("120%", -1, btnX + (bW5 + gap) * 2, curY, bW5, btnH * 3 / 4, true);
+        Button_Classic p120 = new Button_Classic("120%", -1, col2X + (bW5 + CFG.PADD) * 2, rightY, bW5, smallBtnH, true, AutoDevelopManager.targetEcoPercentage == 120);
         menuElements.add(p120);
-        this.idEcoPreset120 = menuElements.size() - 1;
+        this.idEco120 = menuElements.size() - 1;
 
-        Button_Classic p150 = new Button_Classic("150%", -1, btnX + (bW5 + gap) * 3, curY, bW5, btnH * 3 / 4, true);
+        Button_Classic p150 = new Button_Classic("150%", -1, col2X + (bW5 + CFG.PADD) * 3, rightY, bW5, smallBtnH, true, AutoDevelopManager.targetEcoPercentage == 150);
         menuElements.add(p150);
-        this.idEcoPreset150 = menuElements.size() - 1;
+        this.idEco150 = menuElements.size() - 1;
 
-        Button_Classic p200 = new Button_Classic("200%", -1, btnX + (bW5 + gap) * 4, curY, bW5, btnH * 3 / 4, true);
+        Button_Classic p200 = new Button_Classic("200%", -1, col2X + (bW5 + CFG.PADD) * 4, rightY, bW5, smallBtnH, true, AutoDevelopManager.targetEcoPercentage == 200);
         menuElements.add(p200);
-        this.idEcoPreset200 = menuElements.size() - 1;
-        curY += btnH * 3 / 4 + CFG.PADD * 2;
+        this.idEco200 = menuElements.size() - 1;
+        rightY += smallBtnH + CFG.PADD * 2;
 
-        // 8. Галочка: Авто-розвиток рівня досліджень / технологій у провінціях
-        String devText = isUkr
-                ? (AutoDevelopManager.autoInvestDevelopment ? "[✓] Авто-розвиток досліджень (до рівня технологій)" : "[  ] Авто-розвиток досліджень (до рівня технологій)")
-                : (AutoDevelopManager.autoInvestDevelopment ? "[✓] Auto-Develop Research (up to Civ Tech Level)" : "[  ] Auto-Develop Research (up to Civ Tech Level)");
-        Button_Classic devBtn = new Button_Classic(devText, -1, btnX, curY, btnW, btnH, true, AutoDevelopManager.autoInvestDevelopment);
+        // Модуль 4: Дослідження
+        String devText = isUkr 
+                ? (AutoDevelopManager.autoInvestDevelopment ? "[✓] Дослідження (до рівня держави)" : "[  ] Дослідження (до рівня держави)")
+                : (AutoDevelopManager.autoInvestDevelopment ? "[✓] Research Dev (up to Civ Tech Level)" : "[  ] Research Dev (up to Civ Tech Level)");
+        Button_Classic devBtn = new Button_Classic(devText, -1, col2X, rightY, colW, btnH, true, AutoDevelopManager.autoInvestDevelopment);
         menuElements.add(devBtn);
-        this.idToggleDev = menuElements.size() - 1;
-        curY += btnH + CFG.PADD * 2;
+        this.idToggleDevelopment = menuElements.size() - 1;
+        rightY += btnH + CFG.PADD;
 
-        // 9. Галочка: Сповіщення
-        String notifyText = isUkr
-                ? (AutoDevelopManager.showNotifications ? "[✓] Сповіщення про виконані інвестиції" : "[  ] Сповіщення про виконані інвестиції")
-                : (AutoDevelopManager.showNotifications ? "[✓] Show investment notifications" : "[  ] Show investment notifications");
-        Button_Classic notifyBtn = new Button_Classic(notifyText, -1, btnX, curY, btnW, btnH * 4 / 5, true, AutoDevelopManager.showNotifications);
-        menuElements.add(notifyBtn);
-        this.idToggleNotify = menuElements.size() - 1;
-        curY += btnH * 4 / 5 + CFG.PADD * 2;
+        // Сповіщення
+        String notifText = isUkr 
+                ? (AutoDevelopManager.showNotifications ? "[✓] Сповіщення про виконані дії" : "[  ] Сповіщення про виконані дії")
+                : (AutoDevelopManager.showNotifications ? "[✓] Notifications on action complete" : "[  ] Notifications on action complete");
+        Button_Classic notifBtn = new Button_Classic(notifText, -1, col2X, rightY, colW, smallBtnH, true, AutoDevelopManager.showNotifications);
+        menuElements.add(notifBtn);
+        this.idToggleNotifications = menuElements.size() - 1;
+        rightY += smallBtnH + CFG.PADD;
 
-        // 10. Кнопка негайного запуску на цьому ході
-        String runText = isUkr ? "⚡ Інвестувати зараз (на поточному ході)" : "⚡ Run Auto-Develop Now (this turn)";
-        Button_Classic runBtn = new Button_Classic(runText, -1, btnX, curY, btnW, btnH, true);
+        // ==========================================
+        // НИЖНЯ ПАНЕЛЬ: ДІЇ (ЗАПУСК ТА ЗАКРИТТЯ)
+        // ==========================================
+        int bottomY = Math.max(leftY, rightY) + CFG.PADD * 2;
+
+        int actionBtnH = btnH * 11 / 10;
+        String runText = isUkr ? "⚡ ЗАПУСТИТИ ЗАРАЗ (НА ПОТОЧНОМУ ХОДІ)" : "⚡ RUN AUTOMATION NOW (THIS TURN)";
+        Button_Classic runBtn = new Button_Classic(runText, -1, startX, bottomY, menuW, actionBtnH, true);
         menuElements.add(runBtn);
         this.idRunNow = menuElements.size() - 1;
-        curY += btnH + CFG.PADD * 2;
+        bottomY += actionBtnH + CFG.PADD;
 
-        // 11. Кнопка закриття знизу
-        String closeTextBottom = isUkr ? "✕ Закрити вікно" : "✕ Close Window";
-        Button_Classic closeBtnBottom = new Button_Classic(closeTextBottom, -1, btnX, curY, btnW, btnH, true);
+        String closeTextBottom = isUkr ? "✕ Повернутися до гри" : "✕ Return to Game";
+        Button_Classic closeBtnBottom = new Button_Classic(closeTextBottom, -1, startX, bottomY, menuW, btnH, true);
         menuElements.add(closeBtnBottom);
         this.idCloseBottom = menuElements.size() - 1;
-        curY += btnH + CFG.PADD * 2;
+        bottomY += btnH + CFG.PADD * 2;
 
-        // 12. Повноекранний прозорий клікабельний фон для поглинання кліків
+        // Поглинач кліків поза діалогом
         this.idCatchAll = menuElements.size();
         menuElements.add(new Button_Transparent(0, 0, CFG.GAMEWIDTH, CFG.GAMEHEIGHT, true));
 
@@ -227,90 +451,258 @@ public class Menu_AutoDevelop extends Menu {
             return;
         }
 
-        if (iID == this.idToggleEco) {
+        // Пріоритети: зміна порядку
+        for (int i = 0; i < 4; i++) {
+            if (iID == this.idPrioUp[i] && i > 0) {
+                int temp = AutoDevelopManager.priorities[i];
+                AutoDevelopManager.priorities[i] = AutoDevelopManager.priorities[i - 1];
+                AutoDevelopManager.priorities[i - 1] = temp;
+                AutoDevelopManager.saveConfig();
+                this.rebuild();
+                return;
+            }
+            if (iID == this.idPrioDown[i] && i < 3) {
+                int temp = AutoDevelopManager.priorities[i];
+                AutoDevelopManager.priorities[i] = AutoDevelopManager.priorities[i + 1];
+                AutoDevelopManager.priorities[i + 1] = temp;
+                AutoDevelopManager.saveConfig();
+                this.rebuild();
+                return;
+            }
+            if (iID == this.idPrioRow[i]) {
+                // Клік по пріоритету циклічно міняє його на наступний
+                if (i < 3) {
+                    int temp = AutoDevelopManager.priorities[i];
+                    AutoDevelopManager.priorities[i] = AutoDevelopManager.priorities[i + 1];
+                    AutoDevelopManager.priorities[i + 1] = temp;
+                } else {
+                    int temp = AutoDevelopManager.priorities[3];
+                    AutoDevelopManager.priorities[3] = AutoDevelopManager.priorities[0];
+                    AutoDevelopManager.priorities[0] = temp;
+                }
+                AutoDevelopManager.saveConfig();
+                this.rebuild();
+                return;
+            }
+        }
+
+        // Пресети пріоритетів
+        if (iID == this.idPrioPresetBalanced) {
+            AutoDevelopManager.priorities = new int[]{ 
+                    AutoDevelopManager.PRIO_ASSIMILATE, 
+                    AutoDevelopManager.PRIO_FESTIVAL, 
+                    AutoDevelopManager.PRIO_ECONOMY, 
+                    AutoDevelopManager.PRIO_DEVELOPMENT };
+            AutoDevelopManager.saveConfig();
+            this.rebuild();
+            return;
+        }
+
+        if (iID == this.idPrioPresetEconomy) {
+            AutoDevelopManager.priorities = new int[]{ 
+                    AutoDevelopManager.PRIO_ECONOMY, 
+                    AutoDevelopManager.PRIO_DEVELOPMENT, 
+                    AutoDevelopManager.PRIO_ASSIMILATE, 
+                    AutoDevelopManager.PRIO_FESTIVAL };
+            AutoDevelopManager.saveConfig();
+            this.rebuild();
+            return;
+        }
+
+        if (iID == this.idPrioPresetStability) {
+            AutoDevelopManager.priorities = new int[]{ 
+                    AutoDevelopManager.PRIO_ASSIMILATE, 
+                    AutoDevelopManager.PRIO_FESTIVAL, 
+                    AutoDevelopManager.PRIO_DEVELOPMENT, 
+                    AutoDevelopManager.PRIO_ECONOMY };
+            AutoDevelopManager.saveConfig();
+            this.rebuild();
+            return;
+        }
+
+        // Резерв очок ходів
+        if (iID == this.idResMove0) {
+            AutoDevelopManager.minMovePointsReserve = 0;
+            AutoDevelopManager.saveConfig();
+            this.rebuild();
+            return;
+        }
+        if (iID == this.idResMove2) {
+            AutoDevelopManager.minMovePointsReserve = 20;
+            AutoDevelopManager.saveConfig();
+            this.rebuild();
+            return;
+        }
+        if (iID == this.idResMove4) {
+            AutoDevelopManager.minMovePointsReserve = 40;
+            AutoDevelopManager.saveConfig();
+            this.rebuild();
+            return;
+        }
+        if (iID == this.idResMove6) {
+            AutoDevelopManager.minMovePointsReserve = 60;
+            AutoDevelopManager.saveConfig();
+            this.rebuild();
+            return;
+        }
+
+        // Резерв золота
+        if (iID == this.idResGold0) {
+            AutoDevelopManager.minGoldReserve = 0;
+            AutoDevelopManager.saveConfig();
+            this.rebuild();
+            return;
+        }
+        if (iID == this.idResGold1k) {
+            AutoDevelopManager.minGoldReserve = 1000;
+            AutoDevelopManager.saveConfig();
+            this.rebuild();
+            return;
+        }
+        if (iID == this.idResGold5k) {
+            AutoDevelopManager.minGoldReserve = 5000;
+            AutoDevelopManager.saveConfig();
+            this.rebuild();
+            return;
+        }
+        if (iID == this.idResGold10k) {
+            AutoDevelopManager.minGoldReserve = 10000;
+            AutoDevelopManager.saveConfig();
+            this.rebuild();
+            return;
+        }
+
+        // Модуль 1: Асиміляція
+        if (iID == this.idToggleAssimilate) {
+            AutoDevelopManager.autoAssimilate = !AutoDevelopManager.autoAssimilate;
+            AutoDevelopManager.saveConfig();
+            this.rebuild();
+            return;
+        }
+        if (iID == this.idStab90) {
+            AutoDevelopManager.targetStability = 90;
+            AutoDevelopManager.saveConfig();
+            this.rebuild();
+            return;
+        }
+        if (iID == this.idStab95) {
+            AutoDevelopManager.targetStability = 95;
+            AutoDevelopManager.saveConfig();
+            this.rebuild();
+            return;
+        }
+        if (iID == this.idStab100) {
+            AutoDevelopManager.targetStability = 100;
+            AutoDevelopManager.saveConfig();
+            this.rebuild();
+            return;
+        }
+
+        // Модуль 2: Ярмарки
+        if (iID == this.idToggleFestival) {
+            AutoDevelopManager.autoFestival = !AutoDevelopManager.autoFestival;
+            AutoDevelopManager.saveConfig();
+            this.rebuild();
+            return;
+        }
+        if (iID == this.idHappi70) {
+            AutoDevelopManager.targetHappiness = 70;
+            AutoDevelopManager.saveConfig();
+            this.rebuild();
+            return;
+        }
+        if (iID == this.idHappi80) {
+            AutoDevelopManager.targetHappiness = 80;
+            AutoDevelopManager.saveConfig();
+            this.rebuild();
+            return;
+        }
+        if (iID == this.idHappi90) {
+            AutoDevelopManager.targetHappiness = 90;
+            AutoDevelopManager.saveConfig();
+            this.rebuild();
+            return;
+        }
+
+        // Модуль 3: Економіка
+        if (iID == this.idToggleEconomy) {
             AutoDevelopManager.autoInvestEconomy = !AutoDevelopManager.autoInvestEconomy;
             AutoDevelopManager.saveConfig();
             this.rebuild();
             return;
         }
-
-        if (iID == this.idEcoPercMinus50) {
+        if (iID == this.idEcoM50) {
             AutoDevelopManager.targetEcoPercentage = Math.max(10, AutoDevelopManager.targetEcoPercentage - 50);
             AutoDevelopManager.saveConfig();
             this.rebuild();
             return;
         }
-
-        if (iID == this.idEcoPercMinus10) {
+        if (iID == this.idEcoM10) {
             AutoDevelopManager.targetEcoPercentage = Math.max(10, AutoDevelopManager.targetEcoPercentage - 10);
             AutoDevelopManager.saveConfig();
             this.rebuild();
             return;
         }
-
-        if (iID == this.idEcoPercPlus10) {
+        if (iID == this.idEcoP10) {
             AutoDevelopManager.targetEcoPercentage = Math.min(1000, AutoDevelopManager.targetEcoPercentage + 10);
             AutoDevelopManager.saveConfig();
             this.rebuild();
             return;
         }
-
-        if (iID == this.idEcoPercPlus50) {
+        if (iID == this.idEcoP50) {
             AutoDevelopManager.targetEcoPercentage = Math.min(1000, AutoDevelopManager.targetEcoPercentage + 50);
             AutoDevelopManager.saveConfig();
             this.rebuild();
             return;
         }
-
-        if (iID == this.idEcoPreset80) {
+        if (iID == this.idEco80) {
             AutoDevelopManager.targetEcoPercentage = 80;
             AutoDevelopManager.saveConfig();
             this.rebuild();
             return;
         }
-
-        if (iID == this.idEcoPreset100) {
+        if (iID == this.idEco100) {
             AutoDevelopManager.targetEcoPercentage = 100;
             AutoDevelopManager.saveConfig();
             this.rebuild();
             return;
         }
-
-        if (iID == this.idEcoPreset120) {
+        if (iID == this.idEco120) {
             AutoDevelopManager.targetEcoPercentage = 120;
             AutoDevelopManager.saveConfig();
             this.rebuild();
             return;
         }
-
-        if (iID == this.idEcoPreset150) {
+        if (iID == this.idEco150) {
             AutoDevelopManager.targetEcoPercentage = 150;
             AutoDevelopManager.saveConfig();
             this.rebuild();
             return;
         }
-
-        if (iID == this.idEcoPreset200) {
+        if (iID == this.idEco200) {
             AutoDevelopManager.targetEcoPercentage = 200;
             AutoDevelopManager.saveConfig();
             this.rebuild();
             return;
         }
 
-        if (iID == this.idToggleDev) {
+        // Модуль 4: Дослідження
+        if (iID == this.idToggleDevelopment) {
             AutoDevelopManager.autoInvestDevelopment = !AutoDevelopManager.autoInvestDevelopment;
             AutoDevelopManager.saveConfig();
             this.rebuild();
             return;
         }
 
-        if (iID == this.idToggleNotify) {
+        // Сповіщення
+        if (iID == this.idToggleNotifications) {
             AutoDevelopManager.showNotifications = !AutoDevelopManager.showNotifications;
             AutoDevelopManager.saveConfig();
             this.rebuild();
             return;
         }
 
+        // ДІЯ: ЗАПУСК ЗАРАЗ
         if (iID == this.idRunNow) {
             int playerCivID = -1;
             try {
@@ -321,12 +713,14 @@ public class Menu_AutoDevelop extends Menu {
             }
 
             int count = (playerCivID > 0) ? AutoDevelopManager.developForCiv(playerCivID, false) : 0;
-            boolean isUkr = CFG.lang.get("LANGUAGENAME").equalsIgnoreCase("Українська");
-            String msg = isUkr 
-                    ? ("Авто-розвиток: вкладено в " + count + " провінцій!") 
-                    : ("Auto-Develop: invested in " + count + " provinces!");
-            CFG.toastM.addM(msg, count > 0 ? CFG.COLOR_POSITIVE : CFG.COLOR_GOLD);
-            CFG.toastM.setTimeInView(3500);
+            if (count == 0) {
+                boolean isUkr = CFG.lang.get("LANGUAGENAME").equalsIgnoreCase("Українська");
+                String msg = isUkr 
+                        ? "Автоматизація: немає провінцій, які потребують дій, або недостатньо ресурсів/ходів" 
+                        : "Automation: no provinces requiring action, or not enough resources/moves";
+                CFG.toastM.addM(msg, CFG.COLOR_GOLD);
+                CFG.toastM.setTimeInView(3500);
+            }
             this.rebuild();
             return;
         }
@@ -348,20 +742,40 @@ public class Menu_AutoDevelop extends Menu {
 
     @Override
     public void draw(SpriteBatch oSB, int iTranslateX, int iTranslateY, boolean sliderMenuIsActive) {
-        // Повноекранне темне тло
-        oSB.setColor(new Color(0.06f, 0.08f, 0.11f, 0.97f));
+        // Повноекранне темне тло з легким блюром
+        oSB.setColor(new Color(0.04f, 0.06f, 0.09f, 0.95f));
         IMGManager.getIMG(Images.pix255).draw(oSB, 0, 0, CFG.GAMEWIDTH, CFG.GAMEHEIGHT);
 
         // Градієнти зверху та знизу
-        oSB.setColor(new Color(CFG.COLOR_GRADIENT_DARK_BLUE.r, CFG.COLOR_GRADIENT_DARK_BLUE.g, CFG.COLOR_GRADIENT_DARK_BLUE.b, 0.5f));
+        oSB.setColor(new Color(CFG.COLOR_GRADIENT_DARK_BLUE.r, CFG.COLOR_GRADIENT_DARK_BLUE.g, CFG.COLOR_GRADIENT_DARK_BLUE.b, 0.6f));
         IMGManager.getIMG(Images.gradient).draw(oSB, 0, 0, CFG.GAMEWIDTH, CFG.BUTTON_H * 2);
         IMGManager.getIMG(Images.gradient).draw(oSB, 0, CFG.GAMEHEIGHT - CFG.BUTTON_H * 2, CFG.GAMEWIDTH, CFG.BUTTON_H * 2, false, true);
 
-        // Центральна підкладка
-        int panelW = Math.min((int)(CFG.CIV_INFO_MENU_WIDTH * 1.9f), CFG.GAMEWIDTH - CFG.PADD * 2);
-        int panelX = CFG.GAMEWIDTH / 2 - panelW / 2;
-        oSB.setColor(new Color(0.0f, 0.0f, 0.0f, 0.40f));
-        IMGManager.getIMG(Images.pix255).draw(oSB, panelX, 0, panelW, CFG.GAMEHEIGHT);
+        // Центральна карточка вікна
+        int menuW = Math.min((int)(CFG.CIV_INFO_MENU_WIDTH * 2.5f), CFG.GAMEWIDTH - CFG.PADD * 4);
+        int startX = (CFG.GAMEWIDTH - menuW) / 2;
+        int colGap = CFG.PADD * 2;
+        int colW = (menuW - colGap) / 2;
+        int col1X = startX;
+        int col2X = startX + colW + colGap;
+
+        // Підкладка діалогу
+        oSB.setColor(new Color(0.08f, 0.11f, 0.16f, 0.85f));
+        IMGManager.getIMG(Images.pix255).draw(oSB, startX - CFG.PADD, CFG.PADD, menuW + CFG.PADD * 2, CFG.GAMEHEIGHT - CFG.PADD * 2);
+
+        // Рамка діалогу
+        oSB.setColor(new Color(CFG.COLOR_FLAG_FRAME.r, CFG.COLOR_FLAG_FRAME.g, CFG.COLOR_FLAG_FRAME.b, 0.55f));
+        IMGManager.getIMG(Images.pix255).draw(oSB, startX - CFG.PADD, CFG.PADD, menuW + CFG.PADD * 2, 1);
+        IMGManager.getIMG(Images.pix255).draw(oSB, startX - CFG.PADD, CFG.GAMEHEIGHT - CFG.PADD - 1, menuW + CFG.PADD * 2, 1);
+        IMGManager.getIMG(Images.pix255).draw(oSB, startX - CFG.PADD, CFG.PADD, 1, CFG.GAMEHEIGHT - CFG.PADD * 2);
+        IMGManager.getIMG(Images.pix255).draw(oSB, startX + menuW + CFG.PADD, CFG.PADD, 1, CFG.GAMEHEIGHT - CFG.PADD * 2);
+
+        // Підкладка під ліву колонку
+        oSB.setColor(new Color(0.0f, 0.0f, 0.0f, 0.25f));
+        IMGManager.getIMG(Images.pix255).draw(oSB, col1X - CFG.PADD / 2, CFG.BUTTON_H * 2, colW + CFG.PADD, CFG.GAMEHEIGHT - CFG.BUTTON_H * 5);
+        // Підкладка під праву колонку
+        IMGManager.getIMG(Images.pix255).draw(oSB, col2X - CFG.PADD / 2, CFG.BUTTON_H * 2, colW + CFG.PADD, CFG.GAMEHEIGHT - CFG.BUTTON_H * 5);
+
         oSB.setColor(Color.WHITE);
 
         this.beginClipM(oSB, iTranslateX, iTranslateY, sliderMenuIsActive);
