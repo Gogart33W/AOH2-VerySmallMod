@@ -8,6 +8,7 @@ import age.of.civilizations2.jakowski.lukasz.HistoryLog.HistoryLog_Annexation;
 import age.of.civilizations2.jakowski.lukasz.SFXManager;
 import com.badlogic.gdx.Gdx;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -387,56 +388,79 @@ public class VassalManager {
             String vassalName = CFG.core.getCiv(vassalCivID).getCivName();
             int totalProvs = CFG.core.getCiv(vassalCivID).getNumOfProvs();
 
-            ArrayList<Integer> tempProvinces = new ArrayList<Integer>();
-            for (int i = 0; i < CFG.core.getCiv(vassalCivID).getNumOfProvs(); ++i) {
-                tempProvinces.add(CFG.core.getCiv(vassalCivID).getProvID(i));
+            // Збираємо ВСІ провінції васала (як фактичні, так і номінальні)
+            ArrayList<Integer> vassalProvs = new ArrayList<Integer>();
+            for (int i = 0; i < CFG.core.getProvinSize(); ++i) {
+                if (CFG.core.getProv(i).getCivId() == vassalCivID || CFG.core.getProv(i).getTrueOwnerOfProv() == vassalCivID) {
+                    vassalProvs.add(i);
+                }
             }
 
-            for (int i = 0; i < tempProvinces.size(); ++i) {
-                int provID = tempProvinces.get(i);
-                if (CFG.core.getProv(provID).getCivId() != vassalCivID || CFG.core.getProv(provID).getTrueOwnerOfProv() != vassalCivID) {
-                    continue;
-                }
+            for (int i = 0; i < vassalProvs.size(); ++i) {
+                int provID = vassalProvs.get(i);
+
                 int nArmyNewOwnerArmy = CFG.core.getProv(provID).getArmyCivID1(lordCivID);
                 int vassalArmy = CFG.core.getProv(provID).getArmyCivID1(vassalCivID);
 
-                CFG.core.getProv(provID).updateArmy4(0);
+                // Очищаємо застарілі записи армій
+                CFG.core.getProv(provID).updateArmy4(vassalCivID, 0);
                 CFG.core.getProv(provID).updateArmy4(lordCivID, 0);
 
+                // Передаємо право власності та контроль сюзерену
                 CFG.core.getProv(provID).setTrueOwnerOfProv(lordCivID);
                 CFG.core.getProv(provID).setCivId(lordCivID, false);
 
+                // Покращуємо щастя і прибираємо ризик повстання
                 CFG.core.getProv(provID).setHappi(Math.min(1.0f, CFG.core.getProv(provID).getHappi() * 1.05f));
                 CFG.core.getProv(provID).setRevRisk(0.0f);
 
+                // Інтегруємо армію васала до складу збройних сил сюзерена
                 CFG.core.getProv(provID).updateArmy4(lordCivID, nArmyNewOwnerArmy + vassalArmy);
 
-                for (int j = CFG.core.getProv(provID).getCivsSize() - 1; j >= 0; --j) {
-                    int otherCiv = CFG.core.getProv(provID).getCivId(j);
-                    if (otherCiv == lordCivID) continue;
-                    if (CFG.core.getCiv(otherCiv).getPuppetOfCiv() == lordCivID
-                            || CFG.core.getCiv(lordCivID).getPuppetOfCiv() == otherCiv
-                            || (CFG.core.getCiv(otherCiv).getAlliance() > 0 && CFG.core.getCiv(otherCiv).getAlliance() == CFG.core.getCiv(lordCivID).getAlliance())
-                            || CFG.core.getMilitaryAccess(otherCiv, lordCivID) > 0) {
+                // Безпечно переміщуємо іноземні війська без доступу (знімок списку уникає зависання/мутацій)
+                List<Integer> foreignCivs = new ArrayList<Integer>();
+                for (int j = 0; j < CFG.core.getProv(provID).getCivsSize(); ++j) {
+                    int oCiv = CFG.core.getProv(provID).getCivId(j);
+                    if (oCiv != lordCivID && oCiv != vassalCivID && oCiv > 0) {
+                        foreignCivs.add(oCiv);
+                    }
+                }
+                for (int oCiv : foreignCivs) {
+                    if (CFG.core.getCiv(oCiv).getPuppetOfCiv() == lordCivID
+                            || CFG.core.getCiv(lordCivID).getPuppetOfCiv() == oCiv
+                            || (CFG.core.getCiv(oCiv).getAlliance() > 0 && CFG.core.getCiv(oCiv).getAlliance() == CFG.core.getCiv(lordCivID).getAlliance())
+                            || CFG.core.getMilitaryAccess(oCiv, lordCivID) > 0) {
                         continue;
                     }
-                    CFG.gameAction.accessLost_MoveArmyToClosetsProvince(otherCiv, provID);
+                    CFG.gameAction.accessLost_MoveArmyToClosetsProvince(oCiv, provID);
                 }
             }
 
+            // Інтегруємо або розпускаємо будь-які залишки армії васала за межами його кордонів
+            for (int p = 0; p < CFG.core.getProvinSize(); ++p) {
+                int vArmy = CFG.core.getProv(p).getArmyCivID1(vassalCivID);
+                if (vArmy > 0) {
+                    CFG.core.getProv(p).updateArmy4(vassalCivID, 0);
+                    int lArmy = CFG.core.getProv(p).getArmyCivID1(lordCivID);
+                    CFG.core.getProv(p).updateArmy4(lordCivID, lArmy + vArmy);
+                }
+            }
+
+            // Очищення столиці та статусу колишнього васала
             if (CFG.core.getCiv(vassalCivID).getCapitalProvID() >= 0) {
-                CFG.core.getProv(CFG.core.getCiv(vassalCivID).getCapitalProvID()).setIsCapital(false);
-                for (int i = 0; i < CFG.core.getProv(CFG.core.getCiv(vassalCivID).getCapitalProvID()).getCitiesSize(); ++i) {
-                    if (CFG.core.getProv(CFG.core.getCiv(vassalCivID).getCapitalProvID()).getCit(i).getCityLevel() != CFG.getEditorCityLevel(0)) {
-                        continue;
+                int capProv = CFG.core.getCiv(vassalCivID).getCapitalProvID();
+                CFG.core.getProv(capProv).setIsCapital(false);
+                for (int i = 0; i < CFG.core.getProv(capProv).getCitiesSize(); ++i) {
+                    if (CFG.core.getProv(capProv).getCit(i).getCityLevel() == CFG.getEditorCityLevel(0)) {
+                        CFG.core.getProv(capProv).getCit(i).setCityLevel(CFG.getEditorCityLevel(1));
                     }
-                    CFG.core.getProv(CFG.core.getCiv(vassalCivID).getCapitalProvID()).getCit(i).setCityLevel(CFG.getEditorCityLevel(1));
                 }
+                CFG.core.getCiv(vassalCivID).setCapitalProvID(-1);
             }
 
+            CFG.core.getCiv(vassalCivID).setNumberOfUnits(0);
             CFG.core.getCiv(vassalCivID).updateNumberOfUnits();
             CFG.core.getCiv(lordCivID).updateNumberOfUnits();
-            tempProvinces.clear();
 
             CFG.core.buildCivilizationsRegions_TextOver(vassalCivID);
             CFG.core.buildCivilizationsRegions_TextOver(lordCivID);
@@ -448,12 +472,45 @@ public class VassalManager {
 
             CFG.historyManager.addHistoryLog(new HistoryLog_Annexation(vassalCivID, lordCivID));
 
+            // Баланс загрози (Агресивна експансія): сусіди відчувають занепокоєння
+            try {
+                for (int pID : vassalProvs) {
+                    for (int n = 0; n < CFG.core.getProv(pID).getNeighProvincesSize(); ++n) {
+                        int neighProv = CFG.core.getProv(pID).getNeighProvinces(n);
+                        int neighCiv = CFG.core.getProv(neighProv).getCivId();
+                        if (neighCiv > 0 && neighCiv != lordCivID && neighCiv != vassalCivID) {
+                            if (CFG.core.getCiv(neighCiv).getPuppetOfCiv() != lordCivID) {
+                                float curRel = CFG.core.getCiv(neighCiv).getRelationD(lordCivID);
+                                CFG.core.getCiv(neighCiv).setRelationD(lordCivID, Math.max(-100.0f, curRel - 6.0f));
+                            }
+                        }
+                    }
+                }
+            } catch (Exception ignored) {
+            }
+
+            // Оновлюємо туман війни лише для нових приєднаних провінцій
             int tPlayerID = CFG.core.getPlayerIDbyCivID(lordCivID);
             if (tPlayerID >= 0 && CFG.FOG_OF_WAR > 0) {
-                for (int i = 0; i < CFG.core.getCiv(lordCivID).getNumOfProvs(); ++i) {
-                    CFG.core.getProv(CFG.core.getCiv(lordCivID).getProvID(i)).updateFogOfWar(tPlayerID);
+                for (int pID : vassalProvs) {
+                    CFG.core.getProv(pID).updateFogOfWar(tPlayerID);
                 }
             }
+
+            // Закриваємо всі меню дипломатії та дії з цивілізаціями, скидаємо активні виділення
+            try {
+                CFG.menus.setVisible_InGame_CivInfo(false);
+                if (CFG.menus.INGAME_CIV_ACTIONS >= 0 && CFG.menus.getInGame_Civ_Info_Actions() != null) {
+                    CFG.menus.getInGame_Civ_Info_Actions().actionCloseMenu();
+                    CFG.menus.getInGame_Civ_Info_Actions().setVisibleM(false);
+                }
+                CFG.menus.setVisible_InGame_Civ_Opinions(false);
+                CFG.menus.setVisible_InGame_Civ_Decisions(false);
+            } catch (Exception ignored) {
+            }
+
+            CFG.setActiveCivInfoId(0);
+            CFG.core.setActiveProvID(-1);
 
             CFG.map.getMpB().updateWorldMap_Shaders();
             CFG.menus.updateInGameTopAll(lordCivID);
@@ -462,7 +519,6 @@ public class VassalManager {
             if (CFG.menus.getVisibleInGame_Tribute()) {
                 CFG.menus.rebuildInGame_Tribute();
             }
-            CFG.menus.setVisible_InGame_CivInfo(false);
 
             CFG.SFXManager.playSound(SFXManager.SFX_CLICK3);
 

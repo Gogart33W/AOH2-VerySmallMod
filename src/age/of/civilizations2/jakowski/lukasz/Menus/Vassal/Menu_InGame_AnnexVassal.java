@@ -215,8 +215,10 @@ public class Menu_InGame_AnnexVassal extends Menu {
         if (iID == this.idConfirmBtn) {
             if (this.currentStatus != null && this.currentStatus.canAnnex) {
                 int playerCiv = CFG.core.getPlayer(CFG.PLAYER_TURN_ID).getCivId();
-                VassalManager.performAnnexation(playerCiv, this.vassalCivID);
+                int targetCiv = this.vassalCivID;
+                this.currentStatus.canAnnex = false; // Захист від повторних кліків під час обробки
                 close();
+                VassalManager.performAnnexation(playerCiv, targetCiv);
             } else {
                 boolean isUkr = CFG.lang.get("LANGUAGENAME").equalsIgnoreCase("Українська");
                 CFG.toastM.addM(isUkr ? "Не всі вимоги виконано для мирного приєднання!" : "Requirements not met!", CFG.COLOR_NEGATIVE_2);

@@ -282,6 +282,7 @@ public class AutoDevelopManager {
             long startGold = CFG.core.getCiv(civID).getGold();
 
             int countAssimilate = 0;
+            int countCores = 0;
             int countFestival = 0;
             int countEconomy = 0;
             int countDev = 0;
@@ -337,6 +338,20 @@ public class AutoDevelopManager {
                             if (GameManager.addAssi(civID, pID, nMaxTurns)) {
                                 countAssimilate++;
                             }
+                        }
+                    }
+
+                    // Авто-коринг (національна інтеграція): стабільні провінції автоматично отримують національне ядро
+                    for (int pID : provIDs) {
+                        try {
+                            if (CFG.core.getProv(pID).getProviStability() >= 0.95f) {
+                                if (CFG.core.getProv(pID).getCores() != null && !CFG.core.getProv(pID).getCores().getHaveACore(civID)) {
+                                    CFG.core.getProv(pID).getCores().addNewCore(civID, age.of.civilizations2.jakowski.lukasz.GameCalendar.TURNID);
+                                    CFG.core.getProv(pID).buildProvinceCore();
+                                    countCores++;
+                                }
+                            }
+                        } catch (Exception ignored) {
                         }
                     }
                 }
@@ -508,7 +523,7 @@ public class AutoDevelopManager {
                 countBuildings = autoBuildBuildings(civID);
             }
 
-            int totalActions = countAssimilate + countFestival + countEconomy + countDev + countBuildings;
+            int totalActions = countAssimilate + countFestival + countEconomy + countDev + countBuildings + countCores;
 
             // Оновлюємо інтерфейс верхньої панелі та інформації про провінцію
             try {
@@ -535,6 +550,7 @@ public class AutoDevelopManager {
                         sb.append(" (");
                         boolean first = true;
                         if (countAssimilate > 0) { sb.append(countAssimilate).append(" асим."); first = false; }
+                        if (countCores > 0) { if (!first) sb.append(", "); sb.append(countCores).append(" нац. ядер"); first = false; }
                         if (countFestival > 0) { if (!first) sb.append(", "); sb.append(countFestival).append(" ярм."); first = false; }
                         if (countEconomy > 0) { if (!first) sb.append(", "); sb.append(countEconomy).append(" екон."); first = false; }
                         if (countDev > 0) { if (!first) sb.append(", "); sb.append(countDev).append(" розв."); first = false; }
@@ -548,6 +564,7 @@ public class AutoDevelopManager {
                         sb.append(" (");
                         boolean first = true;
                         if (countAssimilate > 0) { sb.append(countAssimilate).append(" assim."); first = false; }
+                        if (countCores > 0) { if (!first) sb.append(", "); sb.append(countCores).append(" cores"); first = false; }
                         if (countFestival > 0) { if (!first) sb.append(", "); sb.append(countFestival).append(" fest."); first = false; }
                         if (countEconomy > 0) { if (!first) sb.append(", "); sb.append(countEconomy).append(" eco."); first = false; }
                         if (countDev > 0) { if (!first) sb.append(", "); sb.append(countDev).append(" dev."); first = false; }
