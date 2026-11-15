@@ -295,6 +295,9 @@ public class VassalManager {
         public float maxLibertyDesire = 50.0f;
         public boolean libertyDesireOk = false;
 
+        public float autonomy = 65.0f;
+        public boolean autonomyOk = false;
+
         public boolean peaceOk = false;
 
         public String getSummaryText(boolean isUkr) {
@@ -365,7 +368,11 @@ public class VassalManager {
             boolean warBetweenThem = CFG.core.getCivsAtWar(lordCivID, vassalCivID);
             status.peaceOk = (!lordAtWar && !vassalAtWar && !warBetweenThem);
 
-            status.canAnnex = status.relationOk && status.yearsOk && status.libertyDesireOk && status.peaceOk;
+            // 5. Шкала автономії (рівень < 40% або тривалий термін понад 10 років)
+            status.autonomy = age.of.civilizations2.jakowski.lukasz.NextGen.VassalAutonomyManager.getAutonomy(vassalCivID);
+            status.autonomyOk = (status.autonomy <= 40.0f || status.yearsAsVassal >= 10);
+
+            status.canAnnex = status.relationOk && status.yearsOk && status.libertyDesireOk && status.peaceOk && status.autonomyOk;
         } catch (Exception ex) {
             CFG.exceptionStack(ex);
         }
@@ -416,24 +423,6 @@ public class VassalManager {
 
                 // Інтегруємо армію васала до складу збройних сил сюзерена
                 CFG.core.getProv(provID).updateArmy4(lordCivID, nArmyNewOwnerArmy + vassalArmy);
-
-                // Безпечно переміщуємо іноземні війська без доступу (знімок списку уникає зависання/мутацій)
-                List<Integer> foreignCivs = new ArrayList<Integer>();
-                for (int j = 0; j < CFG.core.getProv(provID).getCivsSize(); ++j) {
-                    int oCiv = CFG.core.getProv(provID).getCivId(j);
-                    if (oCiv != lordCivID && oCiv != vassalCivID && oCiv > 0) {
-                        foreignCivs.add(oCiv);
-                    }
-                }
-                for (int oCiv : foreignCivs) {
-                    if (CFG.core.getCiv(oCiv).getPuppetOfCiv() == lordCivID
-                            || CFG.core.getCiv(lordCivID).getPuppetOfCiv() == oCiv
-                            || (CFG.core.getCiv(oCiv).getAlliance() > 0 && CFG.core.getCiv(oCiv).getAlliance() == CFG.core.getCiv(lordCivID).getAlliance())
-                            || CFG.core.getMilitaryAccess(oCiv, lordCivID) > 0) {
-                        continue;
-                    }
-                    CFG.gameAction.accessLost_MoveArmyToClosetsProvince(oCiv, provID);
-                }
             }
 
             // Інтегруємо або розпускаємо будь-які залишки армії васала за межами його кордонів
@@ -446,22 +435,14 @@ public class VassalManager {
                 }
             }
 
-            // Очищення столиці та статусу колишнього васала
-            if (CFG.core.getCiv(vassalCivID).getCapitalProvID() >= 0) {
-                int capProv = CFG.core.getCiv(vassalCivID).getCapitalProvID();
-                CFG.core.getProv(capProv).setIsCapital(false);
-                for (int i = 0; i < CFG.core.getProv(capProv).getCitiesSize(); ++i) {
-                    if (CFG.core.getProv(capProv).getCit(i).getCityLevel() == CFG.getEditorCityLevel(0)) {
-                        CFG.core.getProv(capProv).getCit(i).setCityLevel(CFG.getEditorCityLevel(1));
-                    }
-                }
-                CFG.core.getCiv(vassalCivID).setCapitalProvID(-1);
-            }
-
+            // Оновлюємо стан цивілізацій
             CFG.core.getCiv(vassalCivID).setNumberOfUnits(0);
             CFG.core.getCiv(vassalCivID).updateNumberOfUnits();
             CFG.core.getCiv(lordCivID).updateNumberOfUnits();
 
+            // Перераховуємо регіони обох цивілізацій (спочатку геометрію регіонів, потім текст)
+            CFG.core.buildCivilizationRegions(vassalCivID);
+            CFG.core.buildCivilizationRegions(lordCivID);
             CFG.core.buildCivilizationsRegions_TextOver(vassalCivID);
             CFG.core.buildCivilizationsRegions_TextOver(lordCivID);
 
@@ -469,6 +450,7 @@ public class VassalManager {
             knownLords.remove(vassalCivID);
             vassalStartYear.remove(vassalCivID);
             vassalStartTurn.remove(vassalCivID);
+            age.of.civilizations2.jakowski.lukasz.NextGen.VassalAutonomyManager.removeVassal(vassalCivID);
 
             CFG.historyManager.addHistoryLog(new HistoryLog_Annexation(vassalCivID, lordCivID));
 

@@ -41,6 +41,7 @@ public class Menu_InGame_AnnexVassal extends Menu {
             elems.add(new Button_Transparent(0, 0, CFG.GAMEWIDTH, CFG.GAMEHEIGHT, true) {
                 @Override
                 public void actionElem(int iID) {
+                    Menu_InGame_AnnexVassal.close();
                 }
             });
             this.initMenu(null, 0, 0, CFG.GAMEWIDTH, CFG.GAMEHEIGHT, elems);
@@ -183,6 +184,14 @@ public class Menu_InGame_AnnexVassal extends Menu {
                 (this.currentStatus.peaceOk ? (isUkr ? "Мирний" : "Peace") : (isUkr ? "У стані війни" : "At War"));
         TextStyle txtPeace = new TextStyle(peaceStr, -1, elemX, curY, elemW, textH);
         menuElements.add(txtPeace);
+        curY += textH + CFG.PADD;
+
+        // Рівень автономії
+        String autName = age.of.civilizations2.jakowski.lukasz.NextGen.VassalAutonomyManager.getAutonomyLevelName(vassalCivID, isUkr);
+        String autStr = (this.currentStatus.autonomyOk ? "[+] " : "[-] ") +
+                (isUkr ? "Автономія: " : "Autonomy: ") + autName;
+        TextStyle txtAut = new TextStyle(autStr, -1, elemX, curY, elemW, textH);
+        menuElements.add(txtAut);
         curY += textH + CFG.PADD * 2;
 
         // 5. Кнопки підтвердження та скасування
@@ -213,15 +222,21 @@ public class Menu_InGame_AnnexVassal extends Menu {
     @Override
     public void actionEL(int iID) {
         if (iID == this.idConfirmBtn) {
-            if (this.currentStatus != null && this.currentStatus.canAnnex) {
-                int playerCiv = CFG.core.getPlayer(CFG.PLAYER_TURN_ID).getCivId();
-                int targetCiv = this.vassalCivID;
-                this.currentStatus.canAnnex = false; // Захист від повторних кліків під час обробки
+            try {
+                if (this.currentStatus != null && this.currentStatus.canAnnex) {
+                    int playerCiv = CFG.core.getPlayer(CFG.PLAYER_TURN_ID).getCivId();
+                    int targetCiv = this.vassalCivID;
+                    this.currentStatus.canAnnex = false; // Захист від повторних кліків під час обробки
+                    close();
+                    VassalManager.performAnnexation(playerCiv, targetCiv);
+                } else {
+                    boolean isUkr = CFG.lang.get("LANGUAGENAME").equalsIgnoreCase("Українська");
+                    CFG.toastM.addM(isUkr ? "Не всі вимоги виконано для мирного приєднання!" : "Requirements not met!", CFG.COLOR_NEGATIVE_2);
+                    close();
+                }
+            } catch (Exception ex) {
+                CFG.exceptionStack(ex);
                 close();
-                VassalManager.performAnnexation(playerCiv, targetCiv);
-            } else {
-                boolean isUkr = CFG.lang.get("LANGUAGENAME").equalsIgnoreCase("Українська");
-                CFG.toastM.addM(isUkr ? "Не всі вимоги виконано для мирного приєднання!" : "Requirements not met!", CFG.COLOR_NEGATIVE_2);
             }
             return;
         }

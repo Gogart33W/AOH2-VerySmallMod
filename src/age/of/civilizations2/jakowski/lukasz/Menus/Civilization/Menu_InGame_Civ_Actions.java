@@ -276,6 +276,56 @@ extends Menu {
                 });
             }
             nPosY += tempElemH;
+
+            // Фабрикація претензій / Casus Belli
+            boolean isUkrCB = CFG.lang.get("LANGUAGENAME").equalsIgnoreCase("Українська");
+            int myPlayerCiv = CFG.core.getPlayer(CFG.PLAYER_TURN_ID).getCivId();
+            int otherCivID = CFG.getActiveCivInfoId();
+            boolean alreadyHasCB = age.of.civilizations2.jakowski.lukasz.NextGen.CasusBelliManager.hasCasusBelli(myPlayerCiv, otherCivID);
+            String cbBtnTitle = alreadyHasCB
+                    ? (isUkrCB ? "Є Casus Belli (Легітимна війна)" : "Has Casus Belli (Justified)")
+                    : (isUkrCB ? "Фабрикувати претензію (CB)" : "Fabricate Claim (CB)");
+
+            menuElems.add(new Button_DiplomacyAction(Images.diploMessage, cbBtnTitle, 0, 0, nPosY, menuW - 2, tempElemH, !alreadyHasCB) {
+                @Override
+                public void drawMEH2(SpriteBatch oSB, int iTranslateX, int iTranslateY, boolean isActive) {
+                    if (this.menuElemHover != null) {
+                        this.menuElemHover.drawAlwaysBelowMEH(oSB, Menu_InGame_Civ_Actions.this.getPosX() + this.getWidthE() + Core.PADDING + iTranslateX, Touch.getMousePosY());
+                    }
+                }
+
+                @Override
+                public void buildElemHover() {
+                    boolean isUkr = CFG.lang.get("LANGUAGENAME").equalsIgnoreCase("Українська");
+                    int pCiv = CFG.core.getPlayer(CFG.PLAYER_TURN_ID).getCivId();
+                    int tCiv = CFG.getActiveCivInfoId();
+                    String cbName = age.of.civilizations2.jakowski.lukasz.NextGen.CasusBelliManager.getCasusBelliName(pCiv, tCiv, isUkr);
+                    float aeScore = age.of.civilizations2.jakowski.lukasz.NextGen.CasusBelliManager.getAggressiveExpansion(pCiv);
+
+                    ArrayList<MEHover_2E> nElements = new ArrayList<MEHover_2E>();
+                    ArrayList<age.of.civilizations2.jakowski.lukasz.MenuE_HoverP.ME_Hover_2Type> nData = new ArrayList<age.of.civilizations2.jakowski.lukasz.MenuE_HoverP.ME_Hover_2Type>();
+                    nData.add(new ME_Hover_2Type_Text_Big(isUkr ? "Привід до війни (Casus Belli)" : "Casus Belli Status", CFG.COLOR_HOVER_TITLE));
+                    nElements.add(new MEHover_2E(nData));
+                    nData.clear();
+                    nData.add(new age.of.civilizations2.jakowski.lukasz.MenuE_HoverP.ME_Hover_2Type_Text(cbName, CFG.COLOR_TEXT_NUM_OF_PROVINCES));
+                    nElements.add(new MEHover_2E(nData));
+                    nData.clear();
+                    nData.add(new age.of.civilizations2.jakowski.lukasz.MenuE_HoverP.ME_Hover_2Type_Text(
+                        (isUkr ? "Поточна репутація загрози (AE): " : "Current Threat (AE): ") + CFG.getPrecision2(aeScore, 10),
+                        aeScore > 35 ? CFG.COLOR_NEGATIVE_2 : CFG.COLOR_POSITIVE));
+                    nElements.add(new MEHover_2E(nData));
+                    this.menuElemHover = new ME_Hover_v2(nElements);
+                }
+
+                @Override
+                public void actionElem(int iID) {
+                    int pCiv = CFG.core.getPlayer(CFG.PLAYER_TURN_ID).getCivId();
+                    int tCiv = CFG.getActiveCivInfoId();
+                    age.of.civilizations2.jakowski.lukasz.NextGen.CasusBelliManager.startClaimFabrication(pCiv, tCiv);
+                }
+            });
+            nPosY += tempElemH;
+
             boolean canPrepareForWar = false;
             if (CFG.core.getCiv(CFG.core.getPlayer(CFG.PLAYER_TURN_ID).getCivId()).getAlliance() > 0) {
                 for (i2 = 0; i2 < CFG.core.getAlliance(CFG.core.getCiv(CFG.core.getPlayer(CFG.PLAYER_TURN_ID).getCivId()).getAlliance()).getCivilizationsSize(); ++i2) {
