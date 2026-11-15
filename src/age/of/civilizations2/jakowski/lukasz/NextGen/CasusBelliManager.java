@@ -30,6 +30,9 @@ public class CasusBelliManager {
     // Показник агресивної репутації (Infamy / AE): civID -> поточні бали
     private static final Map<Integer, Float> aggressiveExpansion = new ConcurrentHashMap<Integer, Float>();
 
+    // Відомі активні війни для автоматичного відстеження оголошення війн: "civA_civB"
+    private static final java.util.Set<String> knownWars = java.util.Collections.newSetFromMap(new ConcurrentHashMap<String, Boolean>());
+
     /**
      * Перевіряє наявність легітимного приводу до війни (Casus Belli).
      */
@@ -124,6 +127,17 @@ public class CasusBelliManager {
         } catch (Exception ex) {
             return false;
         }
+    }
+
+    /**
+     * Повертає кількість ходів до завершення фабрикації претензії (-1 якщо не фабрикується, 0 якщо готова).
+     */
+    public static int getClaimTurnsRemaining(int fromCivID, int targetCivID) {
+        Map<Integer, Integer> civClaims = claims.get(fromCivID);
+        if (civClaims != null && civClaims.containsKey(targetCivID)) {
+            return civClaims.get(targetCivID);
+        }
+        return -1;
     }
 
     /**
@@ -224,27 +238,116 @@ public class CasusBelliManager {
 
                 for (Map.Entry<Integer, Integer> tEntry : subMap.entrySet()) {
                     int targetCiv = tEntry.getKey();
-                    int turnsLeft = tEntry.getValue() - 1;
-                    if (turnsLeft <= 0) {
-                        readyTargets.add(targetCiv);
-                    } else {
-                        subMap.put(targetCiv, turnsLeft);
+                    int turnsLeft = tEntry.getValue();
+                    if (turnsLeft > 0) {
+                        turnsLeft--;
+                        if (turnsLeft <= 0) {
+                            readyTargets.add(targetCiv);
+                        } else {
+                            subMap.put(targetCiv, turnsLeft);
+                        }
                     }
                 }
 
                 for (int readyCiv : readyTargets) {
-                    subMap.put(readyCiv, 0); // Претензія готова та діє постійно
+                    subMap.put(readyCiv, 0); // Претензія готова та діє
                     if (ownerCiv == playerCiv) {
                         boolean isUkr = (CFG.lang != null && CFG.lang.get("LANGUAGENAME") != null)
                                 ? CFG.lang.get("LANGUAGENAME").equalsIgnoreCase("Українська")
                                 : true;
                         String targetName = CFG.core.getCiv(readyCiv).getCivName();
                         String doneMsg = isUkr
-                                ? ("✅ Претензію на " + targetName + " успішно сфабриковано! Отримано законний Casus Belli.")
-                                : ("✅ Claim on " + targetName + " fabricated! Legitimate Casus Belli acquired.");
+                                ? ("📜 Casus Belli готовий! Наші дипломати завершили підготовку претензій на " + targetName + ". Можна оголошувати війну без штрафів!")
+                                : ("📜 Casus Belli ready! Diplomats finished claim fabrication on " + targetName + ". You can declare war with no penalties!");
                         CFG.toastM.addM(doneMsg, CFG.COLOR_POSITIVE);
+                        CFG.toastM.setTimeInView(5000);
+                        try {
+                            CFG.SFXManager.playSound(age.of.civilizations2.jakowski.lukasz.SFXManager.SFX_CLICK3);
+                        } catch (Exception ignored) {}
                     }
                 }
+            }
+
+            // 3. Автоматичний моніторинг усіх нових війн у світі
+            int numCivs = CFG.core.getCivsSize();
+            java.util.Set<String> currentWars = new java.util.HashSet<String>();
+            for (int i = 1; i < numCivs; i++) {
+                if (CFG.core.getCiv(i).getNumOfProvs() <= 0) continue;
+                List<Integer> wars = CFG.core.getCiv(i).isAtWarWithCivs;
+                if (wars != null) {
+                    for (int j = 0; j < wars.size(); j++) {
+                        int enemy = wars.get(j);
+                        if (enemy <= 0 || enemy == i) continue;
+                        String key = Math.min(i, enemy) + "_" + Math.max(i, enemy);
+                        currentWars.add(key);
+                        if (!knownWars.contains(key)) {
+                            knownWars.add(key);
+                            onWarDeclared(i, enemy);
+                        }
+                    }
+                }
+            }
+            knownWars.retainAll(currentWars);
+
+            // 4. Оборонні коаліції сусідів при високому рівні загрози (AE >= 40)
+            for (Map.Entry<Integer, Float> entry : aggressiveExpansion.entrySet()) {
+                int aggressor = entry.getKey();
+                float ae = entry.getValue();
+                if (ae >= 40.0f && aggressor > 0 && aggressor < numCivs) {
+                    if (CFG.core.getCiv(aggressor).getNumOfProvs() <= 0) continue;
+                    formDefensiveCoalition(aggressor, playerCiv);
+                }
+            }
+        } catch (Exception ex) {
+            CFG.exceptionStack(ex);
+        }
+    }
+
+    /**
+     * Формує оборонні зв'язки між сусідами проти агресора з високим рівнем загрози (AE >= 40).
+     */
+    private static void formDefensiveCoalition(int aggressorCivID, int playerCivID) {
+        try {
+            int numProvs = CFG.core.getCiv(aggressorCivID).getNumOfProvs();
+            List<Integer> neighbors = new ArrayList<Integer>();
+
+            for (int i = 0; i < numProvs; i++) {
+                int pID = CFG.core.getCiv(aggressorCivID).getProvID(i);
+                if (pID < 0) continue;
+                int nSize = CFG.core.getProv(pID).getNeighProvincesSize();
+                for (int j = 0; j < nSize; j++) {
+                    int np = CFG.core.getProv(pID).getNeighProvinces(j);
+                    int nc = CFG.core.getProv(np).getCivId();
+                    if (nc > 0 && nc != aggressorCivID && !neighbors.contains(nc)) {
+                        neighbors.add(nc);
+                    }
+                }
+            }
+
+            // Сусіди об'єднуються у взаємні оборонні пакти проти агресора
+            for (int i = 0; i < neighbors.size(); i++) {
+                int cA = neighbors.get(i);
+                for (int j = i + 1; j < neighbors.size(); j++) {
+                    int cB = neighbors.get(j);
+                    if (CFG.core.getCivsAtWar(cA, cB)) continue;
+                    try {
+                        if (CFG.core.getDefensivePact(cA, cB) <= 0) {
+                            CFG.core.setDefensivePact(cA, cB, 25);
+                        }
+                    } catch (Exception ignored) {}
+                }
+            }
+
+            if (aggressorCivID == playerCivID && neighbors.size() >= 2) {
+                boolean isUkr = (CFG.lang != null && CFG.lang.get("LANGUAGENAME") != null)
+                        ? CFG.lang.get("LANGUAGENAME").equalsIgnoreCase("Українська")
+                        : true;
+                float ae = getAggressiveExpansion(playerCivID);
+                String coalWarn = isUkr
+                        ? ("🚨 ДИПЛОМАТИЧНА ІЗОЛЯЦІЯ: Ваша загроза (AE: " + (int)ae + "/40) спонукала сусідів укласти оборонну коаліцію проти вас!")
+                        : ("🚨 DIPLOMATIC ISOLATION: Your Infamy (AE: " + (int)ae + "/40) led neighboring states to form a defensive coalition against you!");
+                CFG.toastM.addM(coalWarn, CFG.COLOR_NEGATIVE_2);
+                CFG.toastM.setTimeInView(5500);
             }
         } catch (Exception ex) {
             CFG.exceptionStack(ex);

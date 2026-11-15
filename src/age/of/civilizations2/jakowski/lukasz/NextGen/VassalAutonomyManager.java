@@ -48,6 +48,96 @@ public class VassalAutonomyManager {
     }
 
     /**
+     * Зниження автономії васала сюзереном (прискорює анексію, але дратує васала).
+     * Вартість: 250 золота. Знижує автономію на 10%, підвищує бажання свободи на 12%, погіршує стосунки на -12.
+     */
+    public static boolean decreaseAutonomy(int vassalCivID, int lordCivID) {
+        try {
+            if (vassalCivID <= 0 || lordCivID <= 0) return false;
+            long lordGold = CFG.core.getCiv(lordCivID).getGold();
+            boolean isUkr = (CFG.lang != null && CFG.lang.get("LANGUAGENAME") != null)
+                    ? CFG.lang.get("LANGUAGENAME").equalsIgnoreCase("Українська")
+                    : true;
+
+            if (lordGold < 250L) {
+                CFG.toastM.addM(isUkr ? "Недостатньо золота! Потрібно 250 золота для централізації влади." : "Not enough gold! 250 gold required to centralize power.", CFG.COLOR_NEGATIVE_2);
+                return false;
+            }
+
+            float curAut = getAutonomy(vassalCivID);
+            if (curAut <= 5.0f) {
+                CFG.toastM.addM(isUkr ? "Автономія вже на мінімальному рівні!" : "Autonomy is already at minimum!", CFG.COLOR_NEGATIVE_2);
+                return false;
+            }
+
+            CFG.core.getCiv(lordCivID).setGold(lordGold - 250L);
+            setAutonomy(vassalCivID, curAut - 10.0f);
+
+            // Підвищення бажання свободи та погіршення стосунків
+            float curLib = CFG.core.getCiv(vassalCivID).getVassalLibertyDesire();
+            CFG.core.getCiv(vassalCivID).setVassalLibertyDesire(Math.min(100.0f, curLib + 12.0f));
+
+            float curRel = CFG.core.getCiv(vassalCivID).getRelationD(lordCivID);
+            CFG.core.getCiv(vassalCivID).setRelationD(lordCivID, Math.max(-100.0f, curRel - 12.0f));
+
+            String vassalName = CFG.core.getCiv(vassalCivID).getCivName();
+            String msg = isUkr
+                    ? ("📉 Автономію " + vassalName + " знижено до " + CFG.getPrecision2(getAutonomy(vassalCivID), 10) + "%! Бажання свободи: " + (int)(curLib + 12.0f) + "%.")
+                    : ("📉 Autonomy of " + vassalName + " reduced to " + CFG.getPrecision2(getAutonomy(vassalCivID), 10) + "%! Liberty desire: " + (int)(curLib + 12.0f) + "%.");
+
+            CFG.toastM.addM(msg, CFG.COLOR_POSITIVE);
+            try {
+                CFG.SFXManager.playSound(age.of.civilizations2.jakowski.lukasz.SFXManager.SFX_CLICK3);
+            } catch (Exception ignored) {}
+            return true;
+        } catch (Exception ex) {
+            CFG.exceptionStack(ex);
+            return false;
+        }
+    }
+
+    /**
+     * Надання привілеїв васалу (підвищує автономію на 10%, але заспокоює його: -20% бажання свободи, +25 стосунки).
+     */
+    public static boolean increaseAutonomy(int vassalCivID, int lordCivID) {
+        try {
+            if (vassalCivID <= 0 || lordCivID <= 0) return false;
+            boolean isUkr = (CFG.lang != null && CFG.lang.get("LANGUAGENAME") != null)
+                    ? CFG.lang.get("LANGUAGENAME").equalsIgnoreCase("Українська")
+                    : true;
+
+            float curAut = getAutonomy(vassalCivID);
+            if (curAut >= 95.0f) {
+                CFG.toastM.addM(isUkr ? "Автономія вже на максимальному рівні!" : "Autonomy is already at maximum!", CFG.COLOR_NEGATIVE_2);
+                return false;
+            }
+
+            setAutonomy(vassalCivID, curAut + 10.0f);
+
+            // Зниження бажання свободи та покращення стосунків
+            float curLib = CFG.core.getCiv(vassalCivID).getVassalLibertyDesire();
+            CFG.core.getCiv(vassalCivID).setVassalLibertyDesire(Math.max(0.0f, curLib - 20.0f));
+
+            float curRel = CFG.core.getCiv(vassalCivID).getRelationD(lordCivID);
+            CFG.core.getCiv(vassalCivID).setRelationD(lordCivID, Math.min(100.0f, curRel + 25.0f));
+
+            String vassalName = CFG.core.getCiv(vassalCivID).getCivName();
+            String msg = isUkr
+                    ? ("📈 " + vassalName + " надано нові привілеї та автономію (" + CFG.getPrecision2(getAutonomy(vassalCivID), 10) + "%). Бажання свободи впало до " + (int)Math.max(0.0f, curLib - 20.0f) + "%, стосунки +25!")
+                    : ("📈 Granted privileges to " + vassalName + " (Autonomy: " + CFG.getPrecision2(getAutonomy(vassalCivID), 10) + "%). Liberty desire fell to " + (int)Math.max(0.0f, curLib - 20.0f) + "%, relations +25!");
+
+            CFG.toastM.addM(msg, CFG.COLOR_POSITIVE);
+            try {
+                CFG.SFXManager.playSound(age.of.civilizations2.jakowski.lukasz.SFXManager.SFX_CLICK3);
+            } catch (Exception ignored) {}
+            return true;
+        } catch (Exception ex) {
+            CFG.exceptionStack(ex);
+            return false;
+        }
+    }
+
+    /**
      * Визначає рівень статусу васала.
      */
     public static AutonomyLevel getAutonomyLevel(int vassalCivID) {

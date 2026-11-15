@@ -282,11 +282,18 @@ extends Menu {
             int myPlayerCiv = CFG.core.getPlayer(CFG.PLAYER_TURN_ID).getCivId();
             int otherCivID = CFG.getActiveCivInfoId();
             boolean alreadyHasCB = age.of.civilizations2.jakowski.lukasz.NextGen.CasusBelliManager.hasCasusBelli(myPlayerCiv, otherCivID);
-            String cbBtnTitle = alreadyHasCB
-                    ? (isUkrCB ? "Є Casus Belli (Легітимна війна)" : "Has Casus Belli (Justified)")
-                    : (isUkrCB ? "Фабрикувати претензію (CB)" : "Fabricate Claim (CB)");
+            int claimTurns = age.of.civilizations2.jakowski.lukasz.NextGen.CasusBelliManager.getClaimTurnsRemaining(myPlayerCiv, otherCivID);
 
-            menuElems.add(new Button_DiplomacyAction(Images.diploMessage, cbBtnTitle, 0, 0, nPosY, menuW - 2, tempElemH, !alreadyHasCB) {
+            String cbBtnTitle;
+            if (alreadyHasCB) {
+                cbBtnTitle = isUkrCB ? "Є Casus Belli (Легітимна війна)" : "Has Casus Belli (Justified)";
+            } else if (claimTurns > 0) {
+                cbBtnTitle = isUkrCB ? ("Фабрикація CB: ще " + claimTurns + " х.") : ("Fabricating CB: " + claimTurns + " t.");
+            } else {
+                cbBtnTitle = isUkrCB ? "Фабрикувати претензію (CB)" : "Fabricate Claim (CB)";
+            }
+
+            menuElems.add(new Button_DiplomacyAction(Images.diploMessage, cbBtnTitle, 0, 0, nPosY, menuW - 2, tempElemH, !alreadyHasCB && claimTurns <= 0) {
                 @Override
                 public void drawMEH2(SpriteBatch oSB, int iTranslateX, int iTranslateY, boolean isActive) {
                     if (this.menuElemHover != null) {
@@ -301,6 +308,7 @@ extends Menu {
                     int tCiv = CFG.getActiveCivInfoId();
                     String cbName = age.of.civilizations2.jakowski.lukasz.NextGen.CasusBelliManager.getCasusBelliName(pCiv, tCiv, isUkr);
                     float aeScore = age.of.civilizations2.jakowski.lukasz.NextGen.CasusBelliManager.getAggressiveExpansion(pCiv);
+                    int remTurns = age.of.civilizations2.jakowski.lukasz.NextGen.CasusBelliManager.getClaimTurnsRemaining(pCiv, tCiv);
 
                     ArrayList<MEHover_2E> nElements = new ArrayList<MEHover_2E>();
                     ArrayList<age.of.civilizations2.jakowski.lukasz.MenuE_HoverP.ME_Hover_2Type> nData = new ArrayList<age.of.civilizations2.jakowski.lukasz.MenuE_HoverP.ME_Hover_2Type>();
@@ -310,9 +318,16 @@ extends Menu {
                     nData.add(new age.of.civilizations2.jakowski.lukasz.MenuE_HoverP.ME_Hover_2Type_Text(cbName, CFG.COLOR_TEXT_NUM_OF_PROVINCES));
                     nElements.add(new MEHover_2E(nData));
                     nData.clear();
+                    if (remTurns > 0) {
+                        nData.add(new age.of.civilizations2.jakowski.lukasz.MenuE_HoverP.ME_Hover_2Type_Text(
+                            (isUkr ? "• До завершення фабрикації: " : "• Claim ready in: ") + remTurns + (isUkr ? " х." : " turns"),
+                            CFG.COLOR_POSITIVE));
+                        nElements.add(new MEHover_2E(nData));
+                        nData.clear();
+                    }
                     nData.add(new age.of.civilizations2.jakowski.lukasz.MenuE_HoverP.ME_Hover_2Type_Text(
-                        (isUkr ? "Поточна репутація загрози (AE): " : "Current Threat (AE): ") + CFG.getPrecision2(aeScore, 10),
-                        aeScore > 35 ? CFG.COLOR_NEGATIVE_2 : CFG.COLOR_POSITIVE));
+                        (isUkr ? "• Ваша загроза (AE): " : "• Infamy (AE): ") + (int)aeScore + " / 40",
+                        aeScore >= 40 ? CFG.COLOR_NEGATIVE_2 : CFG.COLOR_POSITIVE));
                     nElements.add(new MEHover_2E(nData));
                     this.menuElemHover = new ME_Hover_v2(nElements);
                 }
@@ -321,7 +336,12 @@ extends Menu {
                 public void actionElem(int iID) {
                     int pCiv = CFG.core.getPlayer(CFG.PLAYER_TURN_ID).getCivId();
                     int tCiv = CFG.getActiveCivInfoId();
-                    age.of.civilizations2.jakowski.lukasz.NextGen.CasusBelliManager.startClaimFabrication(pCiv, tCiv);
+                    if (age.of.civilizations2.jakowski.lukasz.NextGen.CasusBelliManager.startClaimFabrication(pCiv, tCiv)) {
+                        boolean isUkr = CFG.lang.get("LANGUAGENAME").equalsIgnoreCase("Українська");
+                        this.setTextE(isUkr ? "Фабрикація CB: ще 3 х." : "Fabricating CB: 3 t.");
+                        this.setClickable(false);
+                        this.buildElemHover();
+                    }
                 }
             });
             nPosY += tempElemH;
@@ -2043,6 +2063,93 @@ extends Menu {
                     nElements.add(new MEHover_2E(nData));
                     nData.clear();
 
+                    String autName = age.of.civilizations2.jakowski.lukasz.NextGen.VassalAutonomyManager.getAutonomyLevelName(vassalCiv, isUkr);
+                    nData.add(new age.of.civilizations2.jakowski.lukasz.MenuE_HoverP.ME_Hover_2Type_Text(
+                        (st.autonomyOk ? "[+] " : "[-] ") + (isUkr ? "Автономія: " : "Autonomy: ") + autName,
+                        st.autonomyOk ? CFG.COLOR_POSITIVE : CFG.COLOR_NEGATIVE_2));
+                    nElements.add(new MEHover_2E(nData));
+                    nData.clear();
+
+                    this.menuElemHover = new ME_Hover_v2(nElements);
+                }
+            });
+            nPosY += tempElemH;
+
+            // Кнопка зниження автономії васала
+            String sDecAut = isUkrAnnex ? "Знизити автономію (-10%) | 250 золота" : "Reduce Autonomy (-10%) | 250 gold";
+            menuElems.add(new Button_DiplomacyAction(Images.diploVassal, sDecAut, 0, 0, nPosY, menuW - 2, tempElemH, true) {
+                @Override
+                public void actionElem(int iID) {
+                    int pCiv = CFG.core.getPlayer(CFG.PLAYER_TURN_ID).getCivId();
+                    int vCiv = CFG.getActiveCivInfoId();
+                    if (age.of.civilizations2.jakowski.lukasz.NextGen.VassalAutonomyManager.decreaseAutonomy(vCiv, pCiv)) {
+                        this.buildElemHover();
+                    }
+                }
+
+                @Override
+                public void buildElemHover() {
+                    boolean isUkr = CFG.lang.get("LANGUAGENAME").equalsIgnoreCase("Українська");
+                    int vCiv = CFG.getActiveCivInfoId();
+                    float aut = age.of.civilizations2.jakowski.lukasz.NextGen.VassalAutonomyManager.getAutonomy(vCiv);
+                    ArrayList<MEHover_2E> nElements = new ArrayList<MEHover_2E>();
+                    ArrayList<age.of.civilizations2.jakowski.lukasz.MenuE_HoverP.ME_Hover_2Type> nData = new ArrayList<age.of.civilizations2.jakowski.lukasz.MenuE_HoverP.ME_Hover_2Type>();
+                    nData.add(new ME_Hover_2Type_Text_Big(isUkr ? "Централізація влади сюзерена" : "Centralize Power", CFG.COLOR_HOVER_TITLE));
+                    nElements.add(new MEHover_2E(nData));
+                    nData.clear();
+                    nData.add(new age.of.civilizations2.jakowski.lukasz.MenuE_HoverP.ME_Hover_2Type_Text(
+                        isUkr ? "• Знижує автономію на -10.0% (поточна: " + CFG.getPrecision2(aut, 10) + "%)" : "• Reduces autonomy by -10.0% (current: " + CFG.getPrecision2(aut, 10) + "%)",
+                        CFG.COLOR_POSITIVE));
+                    nElements.add(new MEHover_2E(nData));
+                    nData.clear();
+                    nData.add(new age.of.civilizations2.jakowski.lukasz.MenuE_HoverP.ME_Hover_2Type_Text(
+                        isUkr ? "• Вартість: 250 золота" : "• Cost: 250 gold", CFG.COLOR_TEXT_NUM_OF_PROVINCES));
+                    nElements.add(new MEHover_2E(nData));
+                    nData.clear();
+                    nData.add(new age.of.civilizations2.jakowski.lukasz.MenuE_HoverP.ME_Hover_2Type_Text(
+                        isUkr ? "• Наслідки: Бажання свободи +12%, Стосунки -12" : "• Consequences: Liberty +12%, Relations -12", CFG.COLOR_NEGATIVE_2));
+                    nElements.add(new MEHover_2E(nData));
+                    nData.clear();
+                    this.menuElemHover = new ME_Hover_v2(nElements);
+                }
+            });
+            nPosY += tempElemH;
+
+            // Кнопка надання автономії васалу
+            String sIncAut = isUkrAnnex ? "Надати автономію (+10%) | Привілеї" : "Grant Autonomy (+10%) | Privileges";
+            menuElems.add(new Button_DiplomacyAction(Images.diploLord, sIncAut, 0, 0, nPosY, menuW - 2, tempElemH, true) {
+                @Override
+                public void actionElem(int iID) {
+                    int pCiv = CFG.core.getPlayer(CFG.PLAYER_TURN_ID).getCivId();
+                    int vCiv = CFG.getActiveCivInfoId();
+                    if (age.of.civilizations2.jakowski.lukasz.NextGen.VassalAutonomyManager.increaseAutonomy(vCiv, pCiv)) {
+                        this.buildElemHover();
+                    }
+                }
+
+                @Override
+                public void buildElemHover() {
+                    boolean isUkr = CFG.lang.get("LANGUAGENAME").equalsIgnoreCase("Українська");
+                    int vCiv = CFG.getActiveCivInfoId();
+                    float aut = age.of.civilizations2.jakowski.lukasz.NextGen.VassalAutonomyManager.getAutonomy(vCiv);
+                    ArrayList<MEHover_2E> nElements = new ArrayList<MEHover_2E>();
+                    ArrayList<age.of.civilizations2.jakowski.lukasz.MenuE_HoverP.ME_Hover_2Type> nData = new ArrayList<age.of.civilizations2.jakowski.lukasz.MenuE_HoverP.ME_Hover_2Type>();
+                    nData.add(new ME_Hover_2Type_Text_Big(isUkr ? "Надання привілеїв васалу" : "Grant Vassal Privileges", CFG.COLOR_HOVER_TITLE));
+                    nElements.add(new MEHover_2E(nData));
+                    nData.clear();
+                    nData.add(new age.of.civilizations2.jakowski.lukasz.MenuE_HoverP.ME_Hover_2Type_Text(
+                        isUkr ? "• Підвищує автономію на +10.0% (поточна: " + CFG.getPrecision2(aut, 10) + "%)" : "• Increases autonomy by +10.0% (current: " + CFG.getPrecision2(aut, 10) + "%)",
+                        CFG.COLOR_TEXT_NUM_OF_PROVINCES));
+                    nElements.add(new MEHover_2E(nData));
+                    nData.clear();
+                    nData.add(new age.of.civilizations2.jakowski.lukasz.MenuE_HoverP.ME_Hover_2Type_Text(
+                        isUkr ? "• Знижує бажання свободи на -20.0%" : "• Reduces liberty desire by -20.0%", CFG.COLOR_POSITIVE));
+                    nElements.add(new MEHover_2E(nData));
+                    nData.clear();
+                    nData.add(new age.of.civilizations2.jakowski.lukasz.MenuE_HoverP.ME_Hover_2Type_Text(
+                        isUkr ? "• Покращує стосунки на +25" : "• Improves relations by +25", CFG.COLOR_POSITIVE));
+                    nElements.add(new MEHover_2E(nData));
+                    nData.clear();
                     this.menuElemHover = new ME_Hover_v2(nElements);
                 }
             });
@@ -2595,6 +2702,40 @@ extends Menu {
             nData.add(new ME_Hover_2Type_Image_Big(Images.diploWar, CFG.PADD, 0));
             nElements.add(new MEHover_2E(nData));
             nData.clear();
+
+            // Casus Belli & AE аналіз
+            boolean isUkr = CFG.lang.get("LANGUAGENAME").equalsIgnoreCase("Українська");
+            int playerCiv = CFG.core.getPlayer(CFG.PLAYER_TURN_ID).getCivId();
+            int targetCiv = CFG.getActiveCivInfoId();
+            boolean hasCB = age.of.civilizations2.jakowski.lukasz.NextGen.CasusBelliManager.hasCasusBelli(playerCiv, targetCiv);
+            float currentAE = age.of.civilizations2.jakowski.lukasz.NextGen.CasusBelliManager.getAggressiveExpansion(playerCiv);
+
+            nData.add(new ME_Hover_2Type_Space());
+            nElements.add(new MEHover_2E(nData));
+            nData.clear();
+
+            if (hasCB) {
+                String cbName = age.of.civilizations2.jakowski.lukasz.NextGen.CasusBelliManager.getCasusBelliName(playerCiv, targetCiv, isUkr);
+                nData.add(new age.of.civilizations2.jakowski.lukasz.MenuE_HoverP.ME_Hover_2Type_Text("[+] Casus Belli: " + cbName, CFG.COLOR_POSITIVE));
+                nElements.add(new MEHover_2E(nData));
+                nData.clear();
+                nData.add(new age.of.civilizations2.jakowski.lukasz.MenuE_HoverP.ME_Hover_2Type_Text(isUkr ? "• Легітимна війна без репутаційних штрафів" : "• Legitimate war without penalties", CFG.COLOR_TEXT_NUM_OF_PROVINCES));
+                nElements.add(new MEHover_2E(nData));
+                nData.clear();
+            } else {
+                nData.add(new age.of.civilizations2.jakowski.lukasz.MenuE_HoverP.ME_Hover_2Type_Text(isUkr ? "[-] УВАГА: ВІЙНА БЕЗ ПРИВОДУ (No-CB)!" : "[-] WARNING: UNJUSTIFIED WAR (No-CB)!", CFG.COLOR_NEGATIVE_2));
+                nElements.add(new MEHover_2E(nData));
+                nData.clear();
+                nData.add(new age.of.civilizations2.jakowski.lukasz.MenuE_HoverP.ME_Hover_2Type_Text(isUkr ? "• Штраф стабільності: -15%" : "• Stability penalty: -15%", CFG.COLOR_NEGATIVE_2));
+                nElements.add(new MEHover_2E(nData));
+                nData.clear();
+                nData.add(new age.of.civilizations2.jakowski.lukasz.MenuE_HoverP.ME_Hover_2Type_Text(isUkr ? "• Агресивна загроза: +28 AE (поточна: " + (int)currentAE + "/40)" : "• Infamy: +28 AE (current: " + (int)currentAE + "/40)", CFG.COLOR_NEGATIVE_2));
+                nElements.add(new MEHover_2E(nData));
+                nData.clear();
+                nData.add(new age.of.civilizations2.jakowski.lukasz.MenuE_HoverP.ME_Hover_2Type_Text(isUkr ? "• Погіршення стосунків з сусідами: -25" : "• Relations with neighbors: -25", CFG.COLOR_NEGATIVE_2));
+                nElements.add(new MEHover_2E(nData));
+                nData.clear();
+            }
         }
         try {
             ArrayList<Integer> lAlliesDefender = new ArrayList<Integer>();

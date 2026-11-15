@@ -57,7 +57,14 @@ public class RevolutionManager {
                 activeCivilWars.remove(finished);
             }
 
-            // 2. Моніторинг нестабільності та спалаху нових громадянських війн
+            // 2. Моніторинг нестабільності та попередження про загрозу революції
+            int playerCiv = -1;
+            try {
+                if (CFG.core != null && CFG.core.getPlayer(CFG.PLAYER_TURN_ID) != null) {
+                    playerCiv = CFG.core.getPlayer(CFG.PLAYER_TURN_ID).getCivId();
+                }
+            } catch (Exception ignored) {}
+
             for (int i = 1; i < numCivs; i++) {
                 if (CFG.core.getCiv(i).getNumOfProvs() < 4) continue; // Карликові країни не розколюються
                 if (activeCivilWars.containsKey(i) || activeCivilWars.containsValue(i)) continue;
@@ -69,13 +76,48 @@ public class RevolutionManager {
                     int turns = unstableTurns.get(i) != null ? unstableTurns.get(i) + 1 : 1;
                     unstableTurns.put(i, turns);
 
+                    // Поетапні попередження гравця
+                    if (i == playerCiv) {
+                        boolean isUkr = (CFG.lang != null && CFG.lang.get("LANGUAGENAME") != null)
+                                ? CFG.lang.get("LANGUAGENAME").equalsIgnoreCase("Українська")
+                                : true;
+                        if (turns == 1) {
+                            String msg1 = isUkr
+                                    ? "⚠️ КРИТИЧНЕ НЕВДОВОЛЕННЯ (1/3 ходів): Стабільність <38%! Народ бунтує. Проведіть ярмарки або інвестуйте, щоб уникнути революції!"
+                                    : "⚠️ CRITICAL UNREST (1/3 turns): Stability <38%! People are angry. Hold festivals or invest to avoid revolution!";
+                            CFG.toastM.addM(msg1, CFG.COLOR_NEGATIVE_2);
+                            CFG.toastM.setTimeInView(5000);
+                        } else if (turns == 2) {
+                            String msg2 = isUkr
+                                    ? "🚨 ПЕРЕДРЕВОЛЮЦІЙНИЙ СТАН (2/3 ходів): Наступного ходу розпочнеться громадянська війна! Терміново підніміть стабільність та щастя!"
+                                    : "🚨 PRE-REVOLUTION CRISIS (2/3 turns): Civil war will break out next turn! Urgently raise stability and happiness!";
+                            CFG.toastM.addM(msg2, CFG.COLOR_NEGATIVE_2);
+                            CFG.toastM.setTimeInView(5500);
+                            try {
+                                CFG.SFXManager.playSound(age.of.civilizations2.jakowski.lukasz.SFXManager.SFX_WAR);
+                            } catch (Exception ignored) {}
+                        }
+                    }
+
                     // Якщо держава нестабільна 3 ходи поспіль — спалахує громадянська війна
                     if (turns >= 3) {
                         triggerCivilWar(i);
                         unstableTurns.remove(i);
                     }
                 } else {
-                    unstableTurns.remove(i);
+                    if (unstableTurns.containsKey(i)) {
+                        unstableTurns.remove(i);
+                        if (i == playerCiv) {
+                            boolean isUkr = (CFG.lang != null && CFG.lang.get("LANGUAGENAME") != null)
+                                    ? CFG.lang.get("LANGUAGENAME").equalsIgnoreCase("Українська")
+                                    : true;
+                            String resolved = isUkr
+                                    ? "🕊️ Кризу подолано: Громадський спокій відновлено, загрозу революції ліквідовано!"
+                                    : "🕊️ Crisis resolved: Public order restored, revolution threat averted!";
+                            CFG.toastM.addM(resolved, CFG.COLOR_POSITIVE);
+                            CFG.toastM.setTimeInView(4000);
+                        }
+                    }
                 }
             }
         } catch (Exception ex) {
@@ -143,12 +185,46 @@ public class RevolutionManager {
                 CFG.core.getProv(pID).setRevRisk(0.0f);
             }
 
+            // Налаштовуємо ідентичність революційної фракції (назва, ідеологія, кольори)
+            boolean isUkr = (CFG.lang != null && CFG.lang.get("LANGUAGENAME") != null)
+                    ? CFG.lang.get("LANGUAGENAME").equalsIgnoreCase("Українська")
+                    : true;
+            String motherName = CFG.core.getCiv(civID).getCivName();
+            int motherIdeology = CFG.core.getCiv(civID).getIdeology();
+
+            int rebelIdeology = 1; // Республіка / Демократія за дефолтом
+            String rebelName;
+            if (motherIdeology == 0) {
+                // Якщо була монархія — революція встановлює республіку
+                rebelIdeology = 1;
+                rebelName = isUkr ? ("Революційна " + motherName) : ("Revolutionary " + motherName);
+            } else if (motherIdeology == 1) {
+                // Якщо була республіка — радикальні повстанці
+                rebelIdeology = 2; // Монархічна хунта або автократія
+                rebelName = isUkr ? ("Повстанська Армія (" + motherName + ")") : ("Rebel Front of " + motherName);
+            } else {
+                rebelIdeology = 1;
+                rebelName = isUkr ? ("Визвольний Рух (" + motherName + ")") : ("Liberation Movement of " + motherName);
+            }
+
+            try {
+                CFG.core.getCiv(rebelCivID).setCivName(rebelName);
+                CFG.core.getCiv(rebelCivID).setIdeology(rebelIdeology);
+                CFG.core.getCiv(rebelCivID).setR(215);
+                CFG.core.getCiv(rebelCivID).setG(35);
+                CFG.core.getCiv(rebelCivID).setB(35);
+                CFG.core.getCiv(rebelCivID).setGold(3500L);
+            } catch (Exception ignored) {}
+
             // Встановлюємо столицю повстанців
             CFG.core.getProv(rebelCapProv).setIsCapital(true);
             CFG.core.getCiv(rebelCivID).setCapitalProvID(rebelCapProv);
             CFG.core.getCiv(rebelCivID).updateNumberOfUnits();
             CFG.core.getCiv(civID).updateNumberOfUnits();
 
+            // Безпечно перераховуємо межі обох цивілізацій
+            CFG.core.buildCivilizationRegions(civID);
+            CFG.core.buildCivilizationRegions(rebelCivID);
             CFG.core.buildCivilizationsRegions_TextOver(civID);
             CFG.core.buildCivilizationsRegions_TextOver(rebelCivID);
 
@@ -156,17 +232,16 @@ public class RevolutionManager {
             CFG.core.declareWar(rebelCivID, civID, false);
             activeCivilWars.put(civID, rebelCivID);
 
-            boolean isUkr = (CFG.lang != null && CFG.lang.get("LANGUAGENAME") != null)
-                    ? CFG.lang.get("LANGUAGENAME").equalsIgnoreCase("Українська")
-                    : true;
-            String countryName = CFG.core.getCiv(civID).getCivName();
+            try {
+                CFG.SFXManager.playSound(age.of.civilizations2.jakowski.lukasz.SFXManager.SFX_WAR);
+            } catch (Exception ignored) {}
 
             String warNotice = isUkr
-                    ? ("💥 ГРОМАДЯНСЬКА ВІЙНА: У державі " + countryName + " спалахнула революція! " + splitCount + " провінцій повстали проти уряду.")
-                    : ("💥 CIVIL WAR: Revolution broke out in " + countryName + "! " + splitCount + " provinces rose up against the government.");
+                    ? ("🔥 ГРОМАДЯНСЬКА ВІЙНА: У державі " + motherName + " спалахнула революція! " + splitCount + " провінцій проголосили утворення '" + rebelName + "'!")
+                    : ("🔥 CIVIL WAR: Revolution broke out in " + motherName + "! " + splitCount + " provinces formed '" + rebelName + "'!");
 
             CFG.toastM.addM(warNotice, CFG.COLOR_NEGATIVE_2);
-            CFG.toastM.setTimeInView(6000);
+            CFG.toastM.setTimeInView(6500);
 
             return true;
         } catch (Exception ex) {
