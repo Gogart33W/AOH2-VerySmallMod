@@ -184,14 +184,6 @@ public class Menu_InGame_AnnexVassal extends Menu {
                 (this.currentStatus.peaceOk ? (isUkr ? "Мирний" : "Peace") : (isUkr ? "У стані війни" : "At War"));
         TextStyle txtPeace = new TextStyle(peaceStr, -1, elemX, curY, elemW, textH);
         menuElements.add(txtPeace);
-        curY += textH + CFG.PADD;
-
-        // Рівень автономії
-        String autName = age.of.civilizations2.jakowski.lukasz.NextGen.VassalAutonomyManager.getAutonomyLevelName(vassalCivID, isUkr);
-        String autStr = (this.currentStatus.autonomyOk ? "[+] " : "[-] ") +
-                (isUkr ? "Автономія: " : "Autonomy: ") + autName;
-        TextStyle txtAut = new TextStyle(autStr, -1, elemX, curY, elemW, textH);
-        menuElements.add(txtAut);
         curY += textH + CFG.PADD * 2;
 
         // 5. Кнопки підтвердження та скасування

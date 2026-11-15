@@ -113,11 +113,6 @@ public class GameCalendar {
         GameCalendar.nextDays(CFG.gameAges.getAge_TurnDays(CURRENT_AGEID));
         try {
             age.of.civilizations2.jakowski.lukasz.Menus.Vassal.VassalManager.syncAllVassals();
-            age.of.civilizations2.jakowski.lukasz.NextGen.VassalAutonomyManager.runVassalAutonomyTurn();
-            age.of.civilizations2.jakowski.lukasz.NextGen.LogisticsManager.runLogisticsTurn();
-            age.of.civilizations2.jakowski.lukasz.NextGen.CasusBelliManager.runDiplomacyReputationTurn();
-            age.of.civilizations2.jakowski.lukasz.NextGen.RevolutionManager.checkRevolutionsTurn();
-            age.of.civilizations2.jakowski.lukasz.NextGen.TacticalWarAIManager.runTacticalAIWarTurn();
             age.of.civilizations2.jakowski.lukasz.Menus.AutoDevelop.AutoDevelopManager.runAutoDevelopTurn();
         } catch (Exception ignored) {
         }

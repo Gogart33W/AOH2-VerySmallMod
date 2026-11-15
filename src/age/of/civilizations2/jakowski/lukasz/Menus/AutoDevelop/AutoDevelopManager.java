@@ -660,28 +660,6 @@ public class AutoDevelopManager {
                     }
                 }
             }
-
-            // 3. Табори постачання (Supply Camps) у гарнізонних/фронтових провінціях
-            if (autoBuildInfrastructure && CFG.core.getCiv(civID).getGold() - minGoldReserve > 1000) {
-                int maxSupplyLvl = BuildingsManager.getSupply_MaxLevel();
-                for (int i = 0; i < numOfProvs; i++) {
-                    int pID = CFG.core.getCiv(civID).getProvID(i);
-                    if (pID >= 0 && !CFG.core.getProv(pID).getSeaProv() && !CFG.core.getProv(pID).isOccupied()) {
-                        int army = CFG.core.getProv(pID).getArmyCivID1(civID);
-                        int supplyLimit = age.of.civilizations2.jakowski.lukasz.NextGen.LogisticsManager.getProvinceSupplyLimit(pID, civID);
-                        if (army > supplyLimit * 0.8f && CFG.core.getProv(pID).getLvlOfSupply() < maxSupplyLvl) {
-                            if (BuildingsManager.canBuildSupply(pID)) {
-                                int cost = BuildingsManager.getSupply_BuildCost(civID, pID);
-                                if (CFG.core.getCiv(civID).getGold() - minGoldReserve >= cost) {
-                                    if (BuildingsManager.buildSupply(civID, pID)) {
-                                        builtCount++;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
         } catch (Exception ex) {
             CFG.exceptionStack(ex);
         }

@@ -295,9 +295,6 @@ public class VassalManager {
         public float maxLibertyDesire = 50.0f;
         public boolean libertyDesireOk = false;
 
-        public float autonomy = 65.0f;
-        public boolean autonomyOk = false;
-
         public boolean peaceOk = false;
 
         public String getSummaryText(boolean isUkr) {
@@ -368,11 +365,7 @@ public class VassalManager {
             boolean warBetweenThem = CFG.core.getCivsAtWar(lordCivID, vassalCivID);
             status.peaceOk = (!lordAtWar && !vassalAtWar && !warBetweenThem);
 
-            // 5. Шкала автономії (рівень < 40% або тривалий термін понад 10 років)
-            status.autonomy = age.of.civilizations2.jakowski.lukasz.NextGen.VassalAutonomyManager.getAutonomy(vassalCivID);
-            status.autonomyOk = (status.autonomy <= 40.0f || status.yearsAsVassal >= 10);
-
-            status.canAnnex = status.relationOk && status.yearsOk && status.libertyDesireOk && status.peaceOk && status.autonomyOk;
+            status.canAnnex = status.relationOk && status.yearsOk && status.libertyDesireOk && status.peaceOk;
         } catch (Exception ex) {
             CFG.exceptionStack(ex);
         }
@@ -450,7 +443,6 @@ public class VassalManager {
             knownLords.remove(vassalCivID);
             vassalStartYear.remove(vassalCivID);
             vassalStartTurn.remove(vassalCivID);
-            age.of.civilizations2.jakowski.lukasz.NextGen.VassalAutonomyManager.removeVassal(vassalCivID);
 
             CFG.historyManager.addHistoryLog(new HistoryLog_Annexation(vassalCivID, lordCivID));
 
